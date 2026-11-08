@@ -39,6 +39,17 @@ Runner ใช้ migrations/seed จาก Backend ที่เลือก ส�
 - [Integration](../.github/workflows/integration.yml) สั่ง workflow_dispatch โดยกรอก Backend repository แบบ owner/repo และ commit SHA 40 ตัว ใช้ revision แน่นอนเพื่อทำซ้ำได้
 - Public Backend ใช้ token ปกติได้ หาก Backend เป็น private ให้เจ้าของตั้ง secret BACKEND_READ_TOKEN ที่อ่าน repository เป้าหมายได้ก่อน ไม่ต้องใช้ secret นี้กับ CI หลักของ PR
 
-ยังไม่ได้สร้าง remote repositories หรือยืนยัน run บน GitHub หลังแยกโครงสร้าง
+## ผลที่ตรวจบน GitHub — 9 พฤศจิกายน 2026
+
+| การตรวจ | ผล |
+|---|---|
+| [Frontend quality](https://github.com/Tspkp2540/frontend/actions/runs/42524975877) | ผ่าน รวม CI required |
+| [Backend quality](https://github.com/Tspkp2540/hotel_be/actions/runs/42524914709) | ผ่าน รวม CI required |
+| [Paired integration](https://github.com/Tspkp2540/frontend/actions/runs/42525412974) | 27 browser flows ผ่าน |
+
+Backend: [Tspkp2540/hotel_be](https://github.com/Tspkp2540/hotel_be), commit [0e56e76](https://github.com/Tspkp2540/hotel_be/commit/0e56e76e1c553f9f132fb74e2a2047a840b21d07)
+Frontend commit ที่ใช้: [d5eabbd](https://github.com/Tspkp2540/frontend/commit/d5eabbd719951b9340deecddff01c93187be4b01)
+
+Required check CI required บน main ตั้งแล้วทั้งสอง repository หลักฐาน integration ใช้คู่ commits ที่ระบุ ไม่ใช่การทดสอบ Backend revision ใหม่โดยอัตโนมัติ
 
 [UI states](STATES.md) · [ภาพประกอบ](../ASSETS.md)

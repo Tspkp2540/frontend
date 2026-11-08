@@ -29,7 +29,7 @@
 
 ## หลักฐาน
 
-75 unit/component tests และ 27 browser flows ตรวจ success/recovery, timeout/cancellation, malformed responses, empty state, auth, conflict, session, รูปเสีย, URL ไม่พบ, pending action, receipt หลัง refresh error และ idempotent recovery ดู [งาน 07](TESTING.md) และ [งาน 09](TESTING.md)
+75 unit/component tests และ 27 browser flows ตรวจ success/recovery, timeout/cancellation, malformed responses, empty state, auth, conflict, session, รูปเสีย, URL ไม่พบ, pending action, receipt หลัง refresh error และ idempotent recovery ดู [Testing และหลักฐาน GitHub](TESTING.md)
 
 Backend เพิ่ม migration 003 และ endpoint ตรวจผล; ล่าสุด 176 tests ผ่าน
 
