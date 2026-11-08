@@ -1,0 +1,71 @@
+name: Backend integration
+on:
+  workflow_dispatch:
+    inputs:
+      backend_repository:
+        description: 'Backend repository (owner/repository)'
+        required: true
+        type: string
+      backend_ref:
+        description: 'Full 40-character Backend commit SHA'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash
+env:
+  CI: 'true'
+jobs:
+  browser:
+    name: Browser integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Validate explicit integration target
+        env:
+          REPOSITORY: ${{ inputs.backend_repository }}
+          REVISION: ${{ inputs.backend_ref }}
+        run: |
+          [[ "$REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+          [[ "$REVISION" =~ ^[0-9a-fA-F]{40}$ ]]
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Checkout pinned Backend
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: ${{ inputs.backend_repository }}
+          ref: ${{ inputs.backend_ref }}
+          path: backend-source
+          token: ${{ secrets.BACKEND_READ_TOKEN || github.token }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.18.0'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend-source/package-lock.json
+      - run: npm ci
+        working-directory: backend-source
+      - run: npm run build
+        working-directory: backend-source
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Test against the pinned Backend
+        env:
+          BACKEND_DIR: ${{ github.workspace }}/backend-source
+        run: npm run test:system
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: browser-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: warn
