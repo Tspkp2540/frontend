@@ -66,6 +66,8 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: browser-results
-          path: test-results/
+          path: |
+            test-results/
+            playwright-report/
           retention-days: 7
           if-no-files-found: warn

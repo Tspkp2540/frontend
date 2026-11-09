@@ -57,7 +57,7 @@ Production ตั้ง VITE_API_BASE_URL ตาม [.env.example](.env.example)
 | npm run test:mutation | Targeted mutation catalogue |
 | npm run test:ci-guards | ป้องกัน focused tests ใน CI |
 
-Windows ใช้ Edge; Linux ติดตั้ง `npx playwright install --with-deps chromium` ก่อน browser tests ผลล่าสุดและคำสั่งเพิ่มเติมอยู่ใน [Testing](docs/TESTING.md)
+Windows ใช้ Edge; Linux ติดตั้ง `npx playwright install --with-deps chromium` ก่อน browser tests ดูผล browser ด้วย `npx playwright show-report` ผลล่าสุดและรายละเอียดอยู่ใน [Testing](docs/TESTING.md)
 
 ## ข้อมูลและโครงสร้าง
 

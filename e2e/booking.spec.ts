@@ -25,6 +25,12 @@ async function fillBooking(page: Page, from = next(today, 2), to = next(today, 4
   await page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true }).click(); await expect(page.getByRole('dialog', { name: 'ยืนยันการจอง' })).toBeVisible();
 }
 
+async function seedHistory() {
+  const owner=(await pool.query('SELECT id FROM users')).rows[0].id;
+  await pool.query(`INSERT INTO bookings(user_id,room_id,check_in,check_out,guest_name,guest_phone,guest_email,status,cancelled_at,created_at)
+    SELECT $1,'7c71298a-ef46-457c-ab5e-9edb238a54e5',DATE '2025-01-01'+n,DATE '2025-01-02'+n,'Historical Guest','+66812345678','history@example.com','cancelled',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+n*INTERVAL '1 microsecond' FROM generate_series(1,21) n`,[owner]);
+}
+
 test('protected pages, inline login errors, twelve rooms, real photos and logout', async ({ page }) => {
   await page.goto('/rooms'); await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading',{name:'ยินดีต้อนรับกลับ'})).toBeVisible(); await page.screenshot({path:'test-results/login-current.png',fullPage:true});
@@ -324,9 +330,7 @@ test('my bookings persists after reload, refreshes after booking and isolates ac
 
 test('my bookings paginates historical cancelled stays and retries network failures',async({page})=>{
   await registerLogin(page);
-  const owner=(await pool.query('SELECT id FROM users')).rows[0].id;
-  await pool.query(`INSERT INTO bookings(user_id,room_id,check_in,check_out,guest_name,guest_phone,guest_email,status,cancelled_at,created_at)
-    SELECT $1,'7c71298a-ef46-457c-ab5e-9edb238a54e5',DATE '2025-01-01'+n,DATE '2025-01-02'+n,'Historical Guest','+66812345678','history@example.com','cancelled',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+n*INTERVAL '1 microsecond' FROM generate_series(1,21) n`,[owner]);
+  await seedHistory();
   await page.route('**/api/v1/bookings?*',route=>route.abort()); await page.getByRole('link',{name:'การจองของฉัน',exact:true}).click();
   await expect(page.getByText('โหลดการจองไม่สำเร็จ')).toBeVisible(); await page.unroute('**/api/v1/bookings?*');
   await page.getByRole('button',{name:'ลองใหม่',exact:true}).click(); await expect(page.getByRole('article')).toHaveCount(20);
@@ -372,4 +376,89 @@ test('search and province filters survive reload, clear no matches and open the 
   await page.screenshot({path:'test-results/stay-search-mobile.png',fullPage:true});
   await page.goto('/rooms?province='+encodeURIComponent('จังหวัดที่ไม่มี')); await expect(page.getByText('ไม่พบที่พักที่ตรงกับการค้นหา')).toBeVisible();
   await expect(page.getByLabel('จังหวัด',{exact:true})).toHaveValue('จังหวัดที่ไม่มี');
+});
+
+test('booking validation errors preserve guest input and allow a corrected retry',async({page})=>{
+  await registerLogin(page); await openRoom(page); await fillBooking(page);
+  let requests=0;
+  await page.route('**/api/v1/bookings',async route=>{
+    if(route.request().method()!=='POST')return route.continue();
+    requests++;
+    if(requests===1)return route.fulfill({status:422,json:{error:{code:'VALIDATION_ERROR',message:'ข้อมูลไม่ถูกต้อง',fields:[{field:'guestPhone',code:'INVALID_FORMAT',message:'กรุณาตรวจสอบเบอร์โทรศัพท์'}],requestId:'10000000-0000-4000-8000-000000000099'}}});
+    await route.continue();
+  });
+  await page.getByRole('button',{name:'ยืนยันการจอง',exact:true}).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByLabel('เบอร์โทรศัพท์',{exact:true})).toHaveAttribute('aria-invalid','true');
+  await expect(page.getByText('กรุณาตรวจสอบเบอร์โทรศัพท์',{exact:true})).toBeVisible();
+  await expect(page.getByLabel('ชื่อ-สกุลผู้เข้าพัก',{exact:true})).toHaveValue('ผู้ตรวจระบบ');
+  await expect(page.getByLabel('วันเข้า',{exact:true})).toHaveValue(next(today,2));
+  expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('0');
+  await page.getByLabel('เบอร์โทรศัพท์',{exact:true}).fill('+66898765432');
+  await page.getByRole('button',{name:'ตรวจสอบการจอง',exact:true}).click();
+  await page.getByRole('button',{name:'ยืนยันการจอง',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'บันทึกการจองเรียบร้อยแล้ว'})).toBeVisible();
+  const rows=(await pool.query('SELECT guest_phone,status FROM bookings')).rows;
+  expect(rows).toEqual([{guest_phone:'+66898765432',status:'confirmed'}]); expect(requests).toBe(2);
+});
+
+test('a cancellation rejected at the cutoff leaves the booking confirmed and reload shows the cutoff',async({page})=>{
+  await registerLogin(page); await openRoom(page); await fillBooking(page);
+  await page.getByRole('button',{name:'ยืนยันการจอง',exact:true}).click();
+  await page.getByRole('link',{name:'ดูการจองของฉัน',exact:true}).click();
+  await page.getByRole('button',{name:'ยกเลิกการจอง',exact:true}).click();
+  // Simulate stale browser data: the server's booking has already reached check-in day.
+  await pool.query('UPDATE bookings SET check_in=$1::date',[today]);
+  const response=page.waitForResponse(r=>r.url().endsWith('/cancel')&&r.request().method()==='POST');
+  await page.getByRole('button',{name:'ยืนยันยกเลิกการจอง',exact:true}).click();
+  expect((await response).status()).toBe(409);
+  await expect(page.getByRole('dialog').getByRole('alert')).toHaveText('ยกเลิกได้ก่อนวันเข้าพักเท่านั้น');
+  expect((await pool.query('SELECT status,cancelled_at FROM bookings')).rows).toEqual([{status:'confirmed',cancelled_at:null}]);
+  await page.getByRole('button',{name:'เก็บการจองไว้',exact:true}).click(); await page.reload();
+  await expect(page.getByText('ยืนยันการจองแล้ว',{exact:true})).toBeVisible();
+  await expect(page.getByText('พ้นกำหนดยกเลิกแล้ว',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'ยกเลิกการจอง',exact:true})).toHaveCount(0);
+});
+
+test('failed history pagination retains loaded rows and retries the same cursor without duplicates',async({page})=>{
+  await registerLogin(page);
+  await seedHistory();
+  const cursors:string[]=[];
+  await page.route('**/api/v1/bookings?*',async route=>{
+    const cursor=new URL(route.request().url()).searchParams.get('cursor');
+    if(cursor){cursors.push(cursor);if(cursors.length===1)return route.abort();}
+    await route.continue();
+  });
+  await page.getByRole('link',{name:'การจองของฉัน',exact:true}).click();
+  await expect(page.getByRole('article')).toHaveCount(20);
+  const firstPage=await page.locator('.booking-reference code').allTextContents();
+  await page.getByRole('button',{name:'โหลดรายการเพิ่มเติม',exact:true}).click();
+  await expect(page.getByRole('alert')).toContainText('เชื่อมต่อไม่สำเร็จ');
+  await expect(page.getByRole('article')).toHaveCount(20);
+  expect(await page.locator('.booking-reference code').allTextContents()).toEqual(firstPage);
+  await page.getByRole('button',{name:'ลองใหม่',exact:true}).click();
+  await expect(page.getByRole('article')).toHaveCount(21);
+  await expect(page.getByText('แสดงรายการครบแล้ว',{exact:true})).toBeVisible();
+  expect(cursors).toHaveLength(2); expect(cursors[0]).toBe(cursors[1]);
+  const all=await page.locator('.booking-reference code').allTextContents();expect(new Set(all).size).toBe(21);
+});
+
+test('rapid month navigation cancels stale requests while the latest calendar succeeds',async({page})=>{
+  await registerLogin(page);await openRoom(page);
+  let release!:()=>void;
+  const held=new Promise<void>(resolve=>{release=resolve;});let requests=0;
+  await page.route('**/api/v1/rooms/*/calendar?*',async route=>{if(++requests===1)await held;await route.continue().catch(()=>{});});
+  try{
+    const firstRequest=page.waitForRequest(r=>r.url().includes('/calendar?'));
+    await page.getByRole('button',{name:'เดือนถัดไป',exact:true}).click();const stale=await firstRequest;
+    const cancelled=page.waitForEvent('requestfailed',{predicate:r=>r===stale});
+    const latestResponse=page.waitForResponse(r=>r.url().includes('/calendar?')&&r.request()!==stale&&r.status()===200);
+    await page.getByRole('button',{name:'เดือนถัดไป',exact:true}).click();
+    expect((await cancelled).failure()?.errorText).toBe('net::ERR_ABORTED');
+    const latest=await latestResponse;expect((await latest.json()).data.roomId).toBe('7c71298a-ef46-457c-ab5e-9edb238a54e5');
+    await expect(page.locator('.booking-calendar')).toHaveAttribute('aria-busy','false');
+    await expect(page.getByRole('heading',{name:'ตรวจวันว่างไม่สำเร็จ',exact:true})).toHaveCount(0);
+    await expect(page.getByText('เลือกวันเข้าพัก แล้วเลือกวันออก',{exact:true})).toBeVisible();
+    expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('0');
+  }finally{release();}
 });
