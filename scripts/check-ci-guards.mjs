@@ -11,7 +11,7 @@ for(const target of ['frontend','browser']){
     const browser=target==='browser';const file=join(folder,browser?'focused.spec.ts':'focused.test.ts');
     await writeFile(file,browser?"import { test } from '@playwright/test'; test.only('focused sentinel',()=>{});":"import { test,expect } from 'vitest'; test.only('focused sentinel',()=>expect(true).toBe(true));");
     const config=join(folder,browser?'playwright.config.ts':'vitest.config.ts');
-    await writeFile(config,browser?`import base from '../../playwright.config.ts'; export default {...base,testDir:${JSON.stringify(folder)},reporter:'list'};`:`import base from '../../vitest.config.ts'; export default {...base,test:{...base.test,include:[${JSON.stringify(file.replaceAll('\\','/'))}]}};`);
+    await writeFile(config,browser?`import base from '../../playwright.config.ts'; export default {...base,testDir:${JSON.stringify(folder)},outputDir:${JSON.stringify(join(folder,'test-results'))},reporter:'list'};`:`import base from '../../vitest.config.ts'; export default {...base,test:{...base.test,include:[${JSON.stringify(file.replaceAll('\\','/'))}]}};`);
     const cli=join(project,browser?'node_modules/@playwright/test/cli.js':'node_modules/vitest/vitest.mjs');
     const args=browser?[cli,'test','--config',config]:[cli,'run','--config',config];
     const result=spawnSync(process.execPath,args,{cwd:project,env:{...process.env,CI:'true'},encoding:'utf8',timeout:60000});const output=result.stdout+result.stderr;

@@ -11,9 +11,9 @@ export const mutations=[
  m('frontend','FE-DATE-06','src/lib/dates.ts',"timeZone: 'Asia/Bangkok'","timeZone: 'UTC'",'Use UTC instead of business timezone',dates),
  m('frontend','FE-DATE-07','src/lib/dates.ts','range.checkIn > shiftDate(data.today, data.bookingRules.maxAdvanceDays)','range.checkIn >= shiftDate(data.today, data.bookingRules.maxAdvanceDays)','Reject exact advance-day limit',dates),
  m('frontend','FE-DATE-08','src/lib/dates.ts','range.checkOut > data.to','range.checkOut >= data.to','Reject checkout on the query exclusive end',dates),
- m('frontend','FE-AUTH-01','src/auth/AuthProvider.tsx','if (!session) return <Navigate','if (false) return <Navigate','Allow an anonymous protected route',flows),
+ m("frontend","FE-AUTH-01","src/auth/AuthProvider.tsx","if (!session)","if (false)","Allow an anonymous protected route",["src/pages/flows.test.tsx"]),
  m('frontend','FE-AUTH-02','src/auth/AuthProvider.tsx',"client.removeQueries({ predicate: query => query.queryKey[0] !== 'session' });",'void 0;','Retain private cached data after session expiry',flows),
  m('frontend','FE-KEY-01','src/components/BookingForm.tsx','const key = requestKey.current ?? crypto.randomUUID();','const key = crypto.randomUUID();','Generate a different key on retry',bookFlows),
  m('frontend','FE-KEY-02','src/components/BookingForm.tsx','const body = replay ? attempted.current : pending;',"const body = replay ? { ...attempted.current!, guestPhone: form.getValues('guestPhone') } : pending;",'Replay edited fields instead of the original payload',bookFlows),
- m('frontend','FE-KEY-03','src/components/BookingRecovery.tsx','if (query.data) { clearBookingRequest(userId, roomId);','if (query.data) { void 0;','Keep the saved key after recovering a committed booking',bookFlows),
+ m("frontend","FE-KEY-03","src/components/BookingRecovery.tsx","if (query.data) {\n      clearBookingRequest(userId, roomId);","if (query.data) {\n      void 0;","Keep the saved key after recovering a committed booking",["src/pages/booking-flows.test.tsx"]),
 ];

@@ -51,6 +51,8 @@ Production ตั้ง VITE_API_BASE_URL ตาม [.env.example](.env.example)
 
 | คำสั่ง | หน้าที่ |
 |---|---|
+| npm run format | จัดรูปแบบ source และ tests ด้วย Prettier |
+| npm run format:check | ตรวจรูปแบบเดียวกับ CI |
 | npm run build | ตรวจ TypeScript และสร้าง production bundle |
 | npm run test:coverage | Unit/component tests พร้อม coverage gates |
 | npm run test:system | Browser + API + PostgreSQL ของ BACKEND_DIR |

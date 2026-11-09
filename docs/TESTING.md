@@ -4,6 +4,7 @@
 
 | คำสั่ง | ตรวจอะไร |
 |---|---|
+| npm run format:check | ตรวจรูปแบบ source/tests แบบเดียวกับ CI |
 | npm run test:coverage | Components, Router, QueryClient และ failure paths พร้อม coverage gates |
 | npm run build | TypeScript และ production bundle |
 | npm run test:mutation | แก้ source copy ทีละจุดเพื่อตรวจว่าชุดทดสอบจับความผิดได้ |
@@ -13,9 +14,13 @@
 
 ## ผลล่าสุดในเครื่อง
 
-10 พฤศจิกายน 2026: browser 35/35 flows ผ่านใน1.4นาที ไม่มี failed/skipped/flaky; TypeScript, focused-test guards และactionlintผ่าน
+10 พฤศจิกายน 2026: browser 35/35 flows ผ่านใน1.3นาที ไม่มี failed/skipped/flaky; TypeScript, focused-test guards และactionlintผ่าน
 
-รอบนี้เปลี่ยนเฉพาะ browser tests/report ผลproduction codeจากรอบก่อนยังเป็น unit94 tests, statements97.76%, branches95.51%, functions98.70%, lines100% และ mutation14/14 killed
+หลังจัดformat: unit94 testsผ่าน, statements97.76%, branches95.51%, functions98.70%, lines98.65% พร้อมTypeScript/build ผ่าน Line coverageเปลี่ยนจากการแยกโค้ดเป็นหลายบรรทัดและยังผ่านgateเดิม ไม่ลดเกณฑ์เพื่อให้ผ่าน
+
+Focused-test guardใช้outputDirแยกใน.ci-work จึงไม่ลบtraceของbrowser suiteที่รันพร้อมกัน ตรวจisolationและbrowser35flowsผ่านแล้ว
+
+รูปแบบโค้ด: `npm run format` จัดรูปแบบ และ `npm run format:check` ตรวจแบบเดียวกับCI ใช้ .prettierrc.json และ LFตาม.gitattributes ทั้งWindows/Linux
 
 Coverage gates: statements/lines/functions ≥90%, branches ≥85%; dates/AuthProvider/BookingRecovery branches100% ไม่รวม main.tsx ซึ่งตรวจ entry/lazy wiring ผ่าน browser
 
@@ -50,4 +55,12 @@ Catalogue มี14เคสสำคัญ ไม่ใช่ exhaustive mutatio
 
 [Quality](../.github/workflows/ci.yml) ตรวจ build/coverage/mutation แยกได้ ใช้ required check CI required ส่วน [Integration](../.github/workflows/integration.yml) รับ Backend repository และ commit SHA40ตัว
 
-[Integration31 flowsบนGitHubผ่าน](https://github.com/Tspkp2540/frontend/actions/runs/42670661922) ใช้ Backendd7fe382 / Frontend934c93a ส่วนautomationที่เพิ่มรอบนี้ยังไม่ได้commit/push Quality CIรันเมื่อpush/PR; browser integrationสั่งผ่านworkflow_dispatchโดยระบุคู่commit ไม่รันอัตโนมัติทุกpush ยังไม่มี deploymentจริงหรือload/penetration test
+หลักฐาน GitHub ที่ยืนยันแล้ว วันที่10พฤศจิกายน2026:
+
+| การตรวจ | Commit ที่ใช้ | ผล |
+|---|---|---|
+| Frontend quality | 85162adb597a15b9c2905d5a9903aa8fcf0db44e | [ผ่าน](https://github.com/Tspkp2540/frontend/actions/runs/42704414399) |
+| Backend quality | d7fe382e488f1ca0ada7d2ccd2073f7b06c195f8 | [ผ่าน](https://github.com/Tspkp2540/hotel_be/actions/runs/42670436874) |
+| Browser integration | คู่ commit ข้างบน | [35 flows ผ่าน](https://github.com/Tspkp2540/frontend/actions/runs/42704667964) |
+
+Quality CIรันเมื่อpush/PR และตรวจ format ด้วย ส่วน browser integrationสั่งผ่านworkflow_dispatchพร้อม Backend SHA ผลแต่ละ run รับรองเฉพาะ commit ที่ระบุ การแก้ไขภายหลังต้องตรวจใหม่ ยังไม่มี deploymentจริงหรือload/penetration test

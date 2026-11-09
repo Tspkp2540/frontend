@@ -17,7 +17,9 @@
     "test:e2e": "playwright test",
     "test:system": "node scripts/test-system.mjs",
     "test:ci-guards": "node scripts/check-ci-guards.mjs",
-    "test:classifier": "node --test scripts/mutation-results.test.mjs"
+    "test:classifier": "node --test scripts/mutation-results.test.mjs",
+    "format": "prettier --write src test e2e \"*.config.ts\"",
+    "format:check": "prettier --check src test e2e \"*.config.ts\""
   },
   "dependencies": {
     "@fontsource/noto-sans-thai": "^5.3.0",
@@ -48,6 +50,7 @@
     "@vitest/coverage-v8": "^5.1.0",
     "jsdom": "^26.1.0",
     "pg": "^8.23.1",
+    "prettier": "3.9.10",
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.6",
