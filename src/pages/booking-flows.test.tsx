@@ -15,6 +15,7 @@ describe('booking interactions and recovery',()=>{
   it('cancels without writes then confirms and clears its stored key',async()=>{
     await open(); await prepare(); await click('กลับไปแก้ไข'); expect(api.book).not.toHaveBeenCalled();
     await click('ตรวจสอบการจอง'); await click('ยืนยันการจอง'); await screen.findByRole('heading',{name:'บันทึกการจองเรียบร้อยแล้ว'});
+    expect(screen.queryByRole('button',{name:'ตรวจสอบการจอง'})).not.toBeInTheDocument(); expect(screen.queryByRole('link',{name:'ดูวันว่าง'})).not.toBeInTheDocument();
     expect(api.book).toHaveBeenCalledWith(expect.objectContaining({guestPhone:'+66812345678',roomId:room.id}),expect.stringMatching(/^[0-9a-f-]{36}$/)); expect(readBookingRequest(session.user.id,room.id)).toBeNull();
     await click('กลับไปดูปฏิทิน'); expect(screen.queryByRole('heading',{name:'บันทึกการจองเรียบร้อยแล้ว'})).toBeNull();
   });
@@ -60,7 +61,7 @@ describe('booking interactions and recovery',()=>{
   });
   it('keeps a saved key through lookup errors and clears it only after a real result',async()=>{
     const key='abcdef00-0000-4000-8000-000000000001';saveBookingRequest(session.user.id,room.id,key); const lookup=deferred<{booking:typeof booking}>();vi.mocked(api.bookingRequest).mockReturnValueOnce(lookup.promise).mockRejectedValueOnce(offline()).mockResolvedValueOnce({booking});mount(`/rooms/${room.id}`);
-    await screen.findByText('กำลังตรวจผลคำขอจองก่อนหน้า…');await act(async()=>lookup.reject(new ApiError(404,'BOOKING_REQUEST_NOT_FOUND','ยังไม่พบ')));await screen.findByText(/ยังไม่พบผลการจอง คำขอเดิมอาจกำลังประมวลผล ตรวจผลอีกครั้ง/);expect(readBookingRequest(session.user.id,room.id)).toBe(key);
+    await screen.findByText('กำลังตรวจผลคำขอจองก่อนหน้า…');await act(async()=>lookup.reject(new ApiError(404,'BOOKING_REQUEST_NOT_FOUND','ยังไม่พบ')));await screen.findByText(/ยังไม่พบผลการจอง ตรวจผลอีกครั้ง/);expect(readBookingRequest(session.user.id,room.id)).toBe(key);
     await click('ตรวจผลการจองอีกครั้ง');await screen.findByText(/ตรวจผลการจองไม่สำเร็จ:/);await click('ตรวจผลการจองอีกครั้ง');await screen.findByRole('heading',{name:'บันทึกการจองเรียบร้อยแล้ว'});
   });
 });

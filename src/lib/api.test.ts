@@ -56,3 +56,28 @@ describe('API contracts used by the UI', () => {
   });
 });
 
+
+it('validates booking history responses and sends the pagination cursor',async()=>{
+  const cursor='20000000-0000-4000-8000-000000000001';
+  const fetch=vi.fn().mockResolvedValue(new Response(JSON.stringify({data:{bookings:[],nextCursor:null}}))); vi.stubGlobal('fetch',fetch);
+  await expect(api.myBookings()).resolves.toEqual({bookings:[],nextCursor:null});
+  fetch.mockResolvedValueOnce(new Response(JSON.stringify({data:{bookings:[],nextCursor:cursor}})));
+  const controller=new AbortController(); await expect(api.myBookings(cursor,controller.signal)).resolves.toMatchObject({nextCursor:cursor});
+  expect(fetch.mock.calls[1][0]).toContain('limit=20&cursor='+cursor); expect(fetch.mock.calls[1][1].credentials).toBe('include');
+  for(const data of [{bookings:null,nextCursor:null},{bookings:[],nextCursor:42},{bookings:[],nextCursor:'invalid'},{bookings:[{status:'other'}],nextCursor:null}]) {
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({data}))); await expect(api.myBookings()).rejects.toMatchObject({code:'INVALID_RESPONSE'});
+  }
+});
+
+it('does not show raw server diagnostics to users and sends cancellation without a body',async()=>{
+  const fetch=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({error:{code:'INTERNAL_ERROR',message:'SQL stack password=secret',fields:[{field:'password',code:'SQL',message:'secret diagnostic'}]}}),{status:500})); vi.stubGlobal('fetch',fetch);
+  await expect(api.cancelBooking('id/unsafe')).rejects.toMatchObject({message:'ระบบไม่สามารถดำเนินการได้ กรุณาลองใหม่',fields:[]});
+  expect(fetch.mock.calls[0][0]).toContain('/bookings/id%2Funsafe/cancel'); expect(fetch.mock.calls[0][1].body).toBeUndefined();
+  expect(fetch.mock.calls[0][1].credentials).toBe('include'); expect(fetch.mock.calls[0][1].method).toBe('POST');
+});
+
+it('requires hotel and province metadata in room responses',async()=>{
+  const room={id:'room',name:'Room',hotelName:'Hotel',province:'เชียงใหม่'};
+  const fetch=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({data:{rooms:[room]}}))).mockResolvedValueOnce(new Response(JSON.stringify({data:{rooms:[{id:'room',name:'Room'}]}})));
+  vi.stubGlobal('fetch',fetch); await expect(api.rooms()).resolves.toEqual({rooms:[room]}); await expect(api.rooms()).rejects.toMatchObject({code:'INVALID_RESPONSE'});
+});

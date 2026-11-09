@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from 'react-router';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { ArrowUpRight, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthProvider';
@@ -13,7 +13,7 @@ export function Layout() {
     <a href="#main" className="skip-link">ข้ามไปเนื้อหา</a>
     <header className="site-header"><div className="header-inner">
       <Link to={session ? '/rooms' : '/login'} className="wordmark">บ้านพัก<span className="brand-dot">.</span></Link>
-      {session ? <><nav aria-label="เมนูหลัก"><Link to="/rooms" className="nav-active">ห้องพักและวันว่าง</Link></nav><div className="account"><span>{session.user.fullName}</span><Button variant="text" onClick={() => void signOut()} busy={busy} aria-label="ออกจากระบบ"><LogOut size={16} /><span>ออกจากระบบ</span></Button></div></> : <Link className="header-link" to={authPage && location.pathname === '/register' ? '/login' : '/register'}>{location.pathname === '/register' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}<ArrowUpRight size={16} /></Link>}
+      {session ? <><nav aria-label="เมนูหลัก"><NavLink to="/rooms" className={({isActive}) => isActive ? "nav-active" : ""}>ห้องพักและวันว่าง</NavLink><NavLink to="/my-bookings" className={({isActive}) => isActive ? "nav-active" : ""}>การจองของฉัน</NavLink></nav><div className="account"><span>{session.user.fullName}</span><Button variant="text" onClick={() => void signOut()} busy={busy} aria-label="ออกจากระบบ"><LogOut size={16} /><span>ออกจากระบบ</span></Button></div></> : <Link className="header-link" to={authPage && location.pathname === '/register' ? '/login' : '/register'}>{location.pathname === '/register' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}<ArrowUpRight size={16} /></Link>}
     </div></header>
     {error && <div className="content-wrap"><Alert>{error}</Alert></div>}
     <main id="main"><Outlet /></main>

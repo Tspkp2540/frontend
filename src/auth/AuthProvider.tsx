@@ -33,7 +33,7 @@ export function useAuth() { const value = useContext(AuthContext); if (!value) t
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { session, pending } = useAuth(); const location = useLocation();
   if (pending) return <PageState title="กำลังตรวจสอบการเข้าสู่ระบบ…" />;
-  if (!session) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  if (!session) return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
   return children;
 }
 

@@ -1,6 +1,6 @@
-import type { Booking, BookingInput, CalendarData, FieldError, Room, Session, User } from './types';
+import type { BookingPage, Booking, BookingInput, CalendarData, FieldError, Room, Session, User } from './types';
 import type { ZodType } from 'zod';
-import { responses } from './responses';
+import { responses, bookingPageResponse } from './responses';
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public fields: FieldError[] = [], public retryAfter?: number) { super(message); }
@@ -18,8 +18,8 @@ export async function request<T>(path: string, options: RequestInit = {}, schema
     if (!response.ok) {
       if (response.status === 401 && body?.error?.code === 'UNAUTHORIZED') window.dispatchEvent(new Event('session-expired'));
       const retry = Number(response.headers.get('Retry-After'));
-      const fields = Array.isArray(body?.error?.fields) ? body.error.fields.filter((field: FieldError) => field && typeof field.field === 'string' && typeof field.message === 'string') : [];
-      throw new ApiError(response.status, typeof body?.error?.code === 'string' ? body.error.code : 'INTERNAL_ERROR', typeof body?.error?.message === 'string' ? body.error.message : 'ไม่สามารถดำเนินการได้ กรุณาลองใหม่', fields, retry > 0 ? retry : undefined);
+      const fields = response.status < 500 && Array.isArray(body?.error?.fields) ? body.error.fields.filter((field: FieldError) => field && typeof field.field === 'string' && typeof field.message === 'string') : [];
+      throw new ApiError(response.status, typeof body?.error?.code === 'string' ? body.error.code : 'INTERNAL_ERROR', response.status >= 500 ? 'ระบบไม่สามารถดำเนินการได้ กรุณาลองใหม่' : typeof body?.error?.message === 'string' ? body.error.message : 'ไม่สามารถดำเนินการได้ กรุณาลองใหม่', fields, retry > 0 ? retry : undefined);
     }
     if (!body || typeof body !== 'object' || !('data' in body) || (schema && !schema.safeParse(body.data).success)) throw new ApiError(502, 'INVALID_RESPONSE', 'ได้รับข้อมูลไม่สมบูรณ์ กรุณาลองใหม่');
     return body.data as T;
@@ -31,6 +31,8 @@ export async function request<T>(path: string, options: RequestInit = {}, schema
   } finally { window.clearTimeout(timer); }
 }
 export const api = {
+  cancelBooking: (id: string) => request<{ booking: Booking }>(`/bookings/${encodeURIComponent(id)}/cancel`, {method:'POST'}, responses.booking),
+  myBookings: (cursor?: string, signal?: AbortSignal) => request<BookingPage>('/bookings?'+new URLSearchParams({limit:'20',...(cursor ? {cursor} : {})}), {signal}, bookingPageResponse),
   me: () => request<Session>('/auth/me', {}, responses.session),
   register: (body: { fullName: string; email: string; password: string }) => request<{ user: User }>('/auth/register', { method: 'POST', body: JSON.stringify(body) }, responses.register),
   login: (body: { email: string; password: string }) => request<Session>('/auth/login', { method: 'POST', body: JSON.stringify(body) }, responses.session),

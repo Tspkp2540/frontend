@@ -1,14 +1,14 @@
 # Booking Frontend
 
-React + TypeScript + Vite สำหรับสมัครสมาชิก เข้าสู่ระบบ เลือกห้อง ดูวันว่าง และจองที่พักผ่าน session cookie
+React + TypeScript + Vite สำหรับ [FUNCHZ assignment](https://github.com/FUNCHZ/fullstack-dev-assignment)
 
-[Backend repository](https://github.com/Tspkp2540/hotel_be) · [Frontend CI](https://github.com/Tspkp2540/frontend/actions/runs/42524975877) · [Integration 27 flows](https://github.com/Tspkp2540/frontend/actions/runs/42525412974)
+[Backend](https://github.com/Tspkp2540/hotel_be) · [Testing](docs/TESTING.md) · [ภาพหน้าจอ](docs/PREVIEW.md) · [UI states](docs/STATES.md)
 
-![หน้าเลือกห้องพัก 5 ห้อง](docs/images/rooms-desktop.jpg)
+![ค้นหาและกรองที่พัก](docs/images/stay-search-desktop.png)
 
-## ลองใช้งานครบระบบ
+## เริ่มใช้งาน
 
-ต้องมี Node.js ≥22.18.0, npm, Git และ Docker Linux engine จากโฟลเดอร์ที่ต้องการเก็บงาน:
+ต้องมี Node.js ≥22.18.0, npm, Git และ Docker Linux engine
 
 ```sh
 git clone https://github.com/Tspkp2540/hotel_be.git hotel-backend
@@ -20,58 +20,47 @@ cd ../hotel-frontend
 npm ci
 ```
 
-เปิดระบบจาก frontend checkout ด้วย PowerShell:
+เปิดครบระบบจาก Frontend ด้วย PowerShell:
 
 ```powershell
 $env:BACKEND_DIR = (Resolve-Path ../hotel-backend).Path
 npm run dev:system
 ```
 
-หรือ Bash:
+Bash: `BACKEND_DIR="$(cd ../hotel-backend && pwd)" npm run dev:system`
 
-```sh
-BACKEND_DIR="$(cd ../hotel-backend && pwd)" npm run dev:system
-```
+เปิด http://127.0.0.1:3000 แล้วสมัครบัญชี มีโรงแรมสมมติ 8 แห่งใน 8 จังหวัด รวม 12 ห้อง Ctrl+C ปิดระบบและลบฐานข้อมูล preview หากเก็บ Backend คนละตำแหน่งให้ตั้ง BACKEND_DIR เป็น path จริง; ใช้ PREVIEW_PORT เปลี่ยน port
 
-เปิด http://127.0.0.1:3000 แล้วสมัครบัญชีใหม่ มีห้องตัวอย่าง 5 ห้องให้เลือก ใช้ Ctrl+C ปิดระบบและลบฐานข้อมูลชั่วคราว หาก clone คนละตำแหน่งให้ตั้ง BACKEND_DIR เป็น path ของ Backend ที่ build แล้ว ใช้ PREVIEW_PORT เปลี่ยน port ได้
+## ฟีเจอร์
 
-## ตำแหน่งและอายุข้อมูล DB
+- สมัครสมาชิก / login / logout ด้วย session cookie
+- ค้นหาชื่อโรงแรม ห้อง หรือจังหวัด และกรองจังหวัด; เก็บตัวกรองใน URL และคงไว้เมื่อกลับจากหน้าห้อง
+- เลือกวันว่างและจอง 1–30 คืน ล่วงหน้าไม่เกิน 365 วันตามเวลาไทย
+- ดูประวัติของตัวเอง โหลดครั้งละ 20 รายการ และยกเลิกก่อนวันเข้าพัก
+- รองรับ loading, empty, error/retry และกู้ผลการจองเมื่อไม่ได้รับคำตอบ
 
-| วิธีรัน | ข้อมูลอยู่ที่ไหน / เก็บนานแค่ไหน |
-|---|---|
-| dev:system / test:system | Docker ของเครื่องที่รัน; ลบเมื่อปิดหรือจบรอบ |
-| API ที่ผู้ตรวจเตรียมเอง | ฐานข้อมูลตาม DATABASE_URL ของ Backend; ใช้ PostgreSQL/volume ของตัวเองหากต้องการเก็บถาวร |
-| GitHub Actions | DB ชั่วคราวบน runner ของ GitHub |
-
-Git มีเฉพาะ source/migrations/seed ไม่รวมบัญชีหรือ bookings ของเครื่องอื่น แต่ละผู้ตรวจสมัครบัญชีของตัวเอง
+ข้อมูลโรงแรม/จังหวัดมาจาก API; ค้นหาแบบ local จาก catalogue ที่โหลดแล้ว วันว่างตรวจที่ปฏิทินและยืนยันอีกครั้งในฐานข้อมูล ภาพใช้ประกอบการสาธิต ดู [ที่มา](ASSETS.md) ไม่มี payment, Admin หรือแก้ไขวันพัก
 
 ## ใช้ API ที่เปิดไว้แล้ว
 
-```sh
-npm ci
-npm run dev
-```
+`npm run dev` ใช้ Vite proxy ไป http://127.0.0.1:3001 เปลี่ยนด้วย API_PROXY_TARGET และตั้ง FRONTEND_ORIGIN ของ Backend ให้ตรงหน้าเว็บ
 
-Vite proxy ส่ง /api ไป http://127.0.0.1:3001 เปลี่ยนได้ด้วย API_PROXY_TARGET ต้องตั้ง FRONTEND_ORIGIN ของ Backend ให้ตรง origin หน้าเว็บ เช่น http://127.0.0.1:3000 การ build/unit tests ไม่ต้องมี Backend checkout
-
-Production ตั้ง VITE_API_BASE_URL ตาม .env.example ให้ชี้ API ที่อยู่ site เดียวกันผ่าน HTTPS ก่อน npm run build และใช้ static hosting ที่รองรับ SPA fallback
+Production ตั้ง VITE_API_BASE_URL ตาม [.env.example](.env.example) ก่อน build ใช้ HTTPS และ static hosting ที่รองรับ SPA fallback
 
 ## ตรวจงาน
 
-| คำสั่ง | ผล/หน้าที่ |
+| คำสั่ง | หน้าที่ |
 |---|---|
-| npm run test:coverage | 75 unit/component tests และ coverage gates |
-| npm run build | TypeScript และ production bundle |
-| npm run test:mutation | 13/13 targeted mutants ในชุดที่กำหนด |
+| npm run build | ตรวจ TypeScript และสร้าง production bundle |
+| npm run test:coverage | Unit/component tests พร้อม coverage gates |
+| npm run test:system | Browser + API + PostgreSQL ของ BACKEND_DIR |
+| npm run test:mutation | Targeted mutation catalogue |
 | npm run test:ci-guards | ป้องกัน focused tests ใน CI |
-| npm run test:system | Browser integration กับ BACKEND_DIR ที่เลือก |
 
-Windows ใช้ Edge; Linux ติดตั้ง browser ก่อนด้วย npx playwright install --with-deps chromium หากเตรียม API/DB ทดสอบเอง ใช้ BASE_URL และ TEST_DATABASE_URL กับ npm run test:e2e แทน ห้ามชี้ production DB เพราะ tests ล้าง fixtures
+Windows ใช้ Edge; Linux ติดตั้ง `npx playwright install --with-deps chromium` ก่อน browser tests ผลล่าสุดและคำสั่งเพิ่มเติมอยู่ใน [Testing](docs/TESTING.md)
 
-[ผลตรวจ/coverage/CI](docs/TESTING.md) · [UI states](docs/STATES.md) · [ภาพ login, popup และมือถือ](docs/PREVIEW.md) · [ที่มาภาพ](ASSETS.md)
+## ข้อมูลและโครงสร้าง
 
-## ขอบเขต
+Preview/tests ใช้ PostgreSQL ชั่วคราวบนเครื่องที่รันและลบเมื่อจบ ต้องการเก็บบัญชี/การจองถาวรให้ใช้ Backend กับ DATABASE_URL และ volume ของตัวเอง Git เก็บ source/migrations/seed ไม่รวมข้อมูลผู้ใช้
 
-การจองใช้วันตาม Asia/Bangkok พักได้ 1–30 คืน วันเข้าล่วงหน้าไม่เกิน 365 วัน Checkout เปิดให้ผู้เข้าพักถัดไปจองต่อได้ ระบบเก็บ request key เพื่อกู้ผลหลัง reload ไม่เก็บ session token หรือ guest fields ใน browser storage ไม่มี payment, admin หรือแก้ไข/ยกเลิกการจอง
-
-src/auth/ session · src/components/ shared UI/calendar/form/recovery · src/lib/ API/types/rules · src/pages/ pages · e2e/ browser tests · scripts/ test runners
+src/auth/ session · src/components/ shared UI · src/lib/ API/types/rules · src/pages/ pages · e2e/ browser tests · scripts/ runners

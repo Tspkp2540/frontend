@@ -1,55 +1,40 @@
 # Frontend testing
 
-รันจาก repository root หลัง npm ci โดยไม่ต้องมี Backend source
+รันจาก Frontend repository หลัง `npm ci` Unit/build/mutation ไม่ต้องมี Backend checkout
 
-| คำสั่ง | งาน / ผลล่าสุด |
+| คำสั่ง | ตรวจอะไร |
 |---|---|
-| npm run test:coverage | 75 unit/component tests ผ่าน |
+| npm run test:coverage | Components, Router, QueryClient และ failure paths พร้อม coverage gates |
 | npm run build | TypeScript และ production bundle |
-| npm run test:mutation | 13/13 targeted mutants จับได้ |
-| npm run test:classifier | 10 tests ของตัวแยกผล mutation |
-| npm run test:ci-guards | ปฏิเสธ focused tests ของ Vitest/Playwright เมื่อ CI=true |
+| npm run test:mutation | แก้ source copy ทีละจุดเพื่อตรวจว่าชุดทดสอบจับความผิดได้ |
+| npm run test:classifier | ตัวแยกผล mutation |
+| npm run test:ci-guards | ปฏิเสธ focused tests ใน CI |
+| npm run test:system | Browser กับ API/PostgreSQL จริง |
 
-Coverage: Lines 100%, Statements 97.55%, Functions 98.37%, Branches 95.12% Gate รวม ≥90/90/90/85 และ branches ของ dates/AuthProvider/BookingRecovery ต้อง 100% ไม่รวม main.tsx entry/lazy wiring ที่ตรวจผ่าน browser suite
+## ผลล่าสุดในเครื่อง
 
-Tests ใช้ components, Router และ QueryClient จริง ควบคุม API responses เพื่อทดสอบ success/error/races ส่วน browser integration ใช้ API/PostgreSQL จริง
+10 พฤศจิกายน 2026: 94 unit/component tests และ 31 browser flows ผ่าน (1.1 นาที), statements 97.76%, branches 95.51%, functions 98.70%, lines 100%; TypeScript/build ผ่าน และ mutation catalogue 14/14 killed ไม่มี survived/invalid/timeout
 
-Mutation เป็น catalog ที่กำหนด ไม่ใช่ exhaustive scan รัน baseline ก่อนและแก้ source copy แยก ไม่มีการแก้ production source ดู [catalog](../scripts/mutation-catalog.mjs) ผลอยู่ที่ mutation-report/summary.json การใช้ --id เก็บรายงานแยก ไม่ถือ compile/import error หรือ timeout เป็น killed
+Coverage gates: statements/lines/functions ≥90%, branches ≥85%; dates/AuthProvider/BookingRecovery branches100% ไม่รวม main.tsx ซึ่งตรวจ entry/lazy wiring ผ่าน browser
 
-```sh
-npm run test:mutation -- --list
-npm run test:mutation -- --id=FE-DATE-03
-```
+ขอบเขตครอบคลุม auth, ค้นหา/จังหวัด, วันเข้า–ออก, conflict, ประวัติ/ยกเลิก, private cache, loading/empty/error/retry, timeout, malformed response และกู้ผลหลัง reload
 
 ## Browser integration
 
-27 flows ตรวจ auth, 5 ห้อง, booking, conflict, expiry, recovery, reload, empty/error/retry, mobile overflow และ modal focus
+1. Build Backend checkout ที่ต้องการ แล้วตั้ง BACKEND_DIR เป็น absolute path
+2. Windows ใช้ Edge; Linux ติดตั้ง `npx playwright install --with-deps chromium`
+3. รัน `npm run test:system` ซึ่งสร้าง PostgreSQL แยกและลบเมื่อจบ
 
-1. Clone Backend ไว้ตำแหน่งใดก็ได้ รัน npm ci และ npm run build ใน checkout นั้น
-2. ติดตั้ง browser: Windows ใช้ Edge; Linux ใช้ npx playwright install --with-deps chromium
-3. ตั้ง BACKEND_DIR เป็น path ของ checkout ที่เลือก แล้วรัน npm run test:system
+หากเตรียม stack เอง ใช้ BASE_URL และ TEST_DATABASE_URL กับ `npm run test:e2e` ห้ามชี้ DB ใช้งานจริง เพราะ tests ล้าง fixtures
 
-Runner ใช้ migrations/seed จาก Backend ที่เลือก สร้างฐานข้อมูลชั่วคราวและลบเมื่อจบ หากมี API/DB ทดสอบเตรียมไว้แล้ว ใช้ BASE_URL และ TEST_DATABASE_URL กับ npm run test:e2e แทน ไม่ต้องมี Backend checkout
+## Mutation และรายงาน
 
-**ห้ามชี้ TEST_DATABASE_URL ไป production** เพราะ tests ล้าง fixtures
+Catalogue มี14เคสสำคัญ ไม่ใช่ exhaustive mutation coverage Runner รัน baseline ก่อน ใช้ source copy ใน .mutation-work และตรวจว่าต้นฉบับไม่เปลี่ยน Compile/import error, timeout, skip ไม่นับว่า killed
 
-## GitHub Actions
+`npm run test:mutation -- --list` ดูรายการ; `-- --id=FE-DATE-03` เลือกรายเคส ผลอยู่ใน mutation-report/summary.json และ coverage/index.html
 
-- [CI หลัก](../.github/workflows/ci.yml) ทำงานบน PR/push main/master; build/coverage/mutation ไม่มี Backend dependency ใช้ required check CI required
-- [Integration](../.github/workflows/integration.yml) สั่ง workflow_dispatch โดยกรอก Backend repository แบบ owner/repo และ commit SHA 40 ตัว ใช้ revision แน่นอนเพื่อทำซ้ำได้
-- Public Backend ใช้ token ปกติได้ หาก Backend เป็น private ให้เจ้าของตั้ง secret BACKEND_READ_TOKEN ที่อ่าน repository เป้าหมายได้ก่อน ไม่ต้องใช้ secret นี้กับ CI หลักของ PR
+## CI
 
-## ผลที่ตรวจบน GitHub — 9 พฤศจิกายน 2026
+[Quality](../.github/workflows/ci.yml) ตรวจ build/coverage/mutation แยกได้ ใช้ required check CI required ส่วน [Integration](../.github/workflows/integration.yml) รับ Backend repository และ commit SHA40ตัว
 
-| การตรวจ | ผล |
-|---|---|
-| [Frontend quality](https://github.com/Tspkp2540/frontend/actions/runs/42524975877) | ผ่าน รวม CI required |
-| [Backend quality](https://github.com/Tspkp2540/hotel_be/actions/runs/42524914709) | ผ่าน รวม CI required |
-| [Paired integration](https://github.com/Tspkp2540/frontend/actions/runs/42525412974) | 27 browser flows ผ่าน |
-
-Backend: [Tspkp2540/hotel_be](https://github.com/Tspkp2540/hotel_be), commit [0e56e76](https://github.com/Tspkp2540/hotel_be/commit/0e56e76e1c553f9f132fb74e2a2047a840b21d07)
-Frontend commit ที่ใช้: [d5eabbd](https://github.com/Tspkp2540/frontend/commit/d5eabbd719951b9340deecddff01c93187be4b01)
-
-Required check CI required บน main ตั้งแล้วทั้งสอง repository หลักฐาน integration ใช้คู่ commits ที่ระบุ ไม่ใช่การทดสอบ Backend revision ใหม่โดยอัตโนมัติ
-
-[UI states](STATES.md) · [ภาพประกอบ](../ASSETS.md)
+[หลักฐาน integration เดิม27 flows](https://github.com/Tspkp2540/frontend/actions/runs/42525412974) ใช้ Backend0e56e76 และ Frontendd5eabbd ฟีเจอร์ล่าสุดยังไม่ได้commit/push ผลบน GitHub เดิมไม่ครอบคลุม working tree นี้ ยังไม่มี deployment จริงหรือ load/penetration test

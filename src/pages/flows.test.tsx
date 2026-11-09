@@ -26,6 +26,13 @@ describe('authentication and protected navigation',()=>{
     vi.mocked(api.me).mockRejectedValue(unauthorized()); mount(`/rooms/${room.id}`); await screen.findByRole('heading',{name:'ยินดีต้อนรับกลับ'}); await fillAuth(); await click('เข้าสู่ระบบ'); await screen.findByRole('heading',{name:'เลือกวันเข้าพัก'});
     expect(api.login).toHaveBeenCalledWith({email:'test@example.com',password:'secure-password-123'});
   });
+  it('returns to my bookings after signing in',async()=>{
+    vi.mocked(api.me).mockRejectedValue(unauthorized()); mount('/my-bookings'); await screen.findByRole('heading',{name:'ยินดีต้อนรับกลับ'}); await fillAuth(); await click('เข้าสู่ระบบ'); await screen.findByRole('heading',{name:/การจองของฉัน/});
+  });
+  it('preserves search filters through login',async()=>{
+    vi.mocked(api.me).mockRejectedValue(unauthorized()); mount('/login',{from:'/rooms?q=บ้านพัก&province=เชียงใหม่'}); await screen.findByRole('heading',{name:'ยินดีต้อนรับกลับ'}); await fillAuth(); await click('เข้าสู่ระบบ'); await screen.findByRole('heading',{name:/เลือกห้องพัก/});
+    expect(screen.getByLabelText('ค้นหาที่พัก')).toHaveValue('บ้านพัก'); expect(screen.getByLabelText('จังหวัด')).toHaveValue('เชียงใหม่');
+  });
   it('rejects an unsafe redirect after login',async()=>{
     vi.mocked(api.me).mockRejectedValue(unauthorized()); mount('/login',{from:'https://other.example'}); await screen.findByRole('heading',{name:'ยินดีต้อนรับกลับ'}); await fillAuth(); await click('เข้าสู่ระบบ'); await screen.findByRole('heading',{name:/เลือกห้องพัก\s*\./});
   });

@@ -25,9 +25,10 @@ async function fillBooking(page: Page, from = next(today, 2), to = next(today, 4
   await page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true }).click(); await expect(page.getByRole('dialog', { name: 'ยืนยันการจอง' })).toBeVisible();
 }
 
-test('protected pages, inline login errors, five rooms, real photos and logout', async ({ page }) => {
+test('protected pages, inline login errors, twelve rooms, real photos and logout', async ({ page }) => {
   await page.goto('/rooms'); await expect(page).toHaveURL(/\/login$/);
-  await registerLogin(page); await expect(page.locator('.room-item')).toHaveCount(5);
+  await expect(page.getByRole('heading',{name:'ยินดีต้อนรับกลับ'})).toBeVisible(); await page.screenshot({path:'test-results/login-current.png',fullPage:true});
+  await registerLogin(page); await expect(page.locator('.room-item')).toHaveCount(12);
   for(const image of await page.locator('.room-image img').all()) { await image.scrollIntoViewIfNeeded(); await expect.poll(()=>image.evaluate(image=>(image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0); }
   await page.getByRole('button', { name: 'ออกจากระบบ', exact: true }).click(); await expect(page).toHaveURL(/\/login$/);
   await page.getByLabel('อีเมล', { exact: true }).fill('review@example.com'); await page.getByLabel('รหัสผ่าน', { exact: true }).fill('wrong-password-123'); await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click();
@@ -35,10 +36,12 @@ test('protected pages, inline login errors, five rooms, real photos and logout',
 });
 test('booking confirmation commits once, shows receipt and updates calendar without affecting another room', async ({ page }) => {
   await registerLogin(page); await openRoom(page); await fillBooking(page);
+  await page.screenshot({path:'test-results/booking-confirmation-current.png',fullPage:true});
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click(); await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
+  await page.evaluate(()=>window.scrollTo(0,0)); await page.screenshot({path:'test-results/booking-receipt-current.png',fullPage:true});
   const rows = (await pool.query('SELECT b.*,u.email FROM bookings b JOIN users u ON u.id=b.user_id')).rows; expect(rows).toHaveLength(1); expect(rows[0].email).toBe('review@example.com');
   await page.getByRole('button', { name: 'กลับไปดูปฏิทิน' }).click(); await page.reload(); await expect(page.locator('.calendar-booked')).toHaveCount(2);
-  await page.getByRole('link', { name: 'ห้องพักทั้งหมด', exact: true }).click(); await page.getByRole('link', { name: /ห้องสวน/ }).click(); await expect(page.locator('.calendar-booked')).toHaveCount(0);
+  await page.getByRole('link', { name: 'ห้องพักทั้งหมด', exact: true }).click(); await page.getByRole('link').filter({has:page.getByRole('heading',{name:'ห้องสวน',exact:true})}).click(); await expect(page.locator('.calendar-booked')).toHaveCount(0);
 });
 test('late conflict refreshes availability, preserves guest input and asks for new dates', async ({ page, request }) => {
   await registerLogin(page); await openRoom(page); await fillBooking(page);
@@ -111,7 +114,7 @@ for (const mode of ['network', 'server', 'malformed'] as const) {
     await page.route('**/api/v1/rooms', route => mode === 'network' ? route.abort('failed') : route.fulfill({ status: mode === 'server' ? 503 : 200, contentType: 'application/json', body: mode === 'server' ? 'Service unavailable' : JSON.stringify({ data: { rooms: null } }) }));
     await page.reload(); await expect(page.getByRole('heading', { name: 'โหลดห้องพักไม่สำเร็จ' })).toBeVisible();
     await page.unroute('**/api/v1/rooms'); await page.getByRole('button', { name: 'ลองใหม่' }).click();
-    await expect(page.locator('.room-item')).toHaveCount(5);
+    await expect(page.locator('.room-item')).toHaveCount(12);
   });
 }
 
@@ -121,7 +124,7 @@ test('empty room list can refresh to available rooms', async ({ page }) => {
   await page.reload(); await expect(page.getByRole('heading', { name: 'ยังไม่มีห้องที่เปิดรับจอง' })).toBeVisible();
   await page.screenshot({ path: 'test-results/empty-rooms.png', fullPage: true });
   await page.unroute('**/api/v1/rooms'); await page.getByRole('button', { name: 'ลองใหม่' }).click();
-  await expect(page.locator('.room-item')).toHaveCount(5);
+  await expect(page.locator('.room-item')).toHaveCount(12);
 });
 
 test('initial calendar failure recovers and missing room has a way back', async ({ page }) => {
@@ -135,24 +138,24 @@ test('initial calendar failure recovers and missing room has a way back', async 
   await expect(page.getByLabel('เบอร์โทรศัพท์', { exact: true })).toBeVisible();
   await page.goto('/rooms/00000000-0000-4000-8000-000000000000');
   await expect(page.getByRole('heading', { name: 'ไม่พบห้องที่เปิดรับจอง' })).toBeVisible();
-  await page.getByRole('link', { name: 'กลับไปเลือกห้องพัก', exact: true }).click(); await expect(page.locator('.room-item')).toHaveCount(5);
+  await page.getByRole('link', { name: 'กลับไปเลือกห้องพัก', exact: true }).click(); await expect(page.locator('.room-item')).toHaveCount(12);
 });
 
 test('broken photo has fallback and unknown route has a recovery page', async ({ page }) => {
   await page.route('**/images/*.jpg', route => route.abort('failed'));
   await registerLogin(page);
-  await expect(page.getByText('ไม่มีภาพตัวอย่าง')).toHaveCount(5);
+  await expect(page.getByText('ไม่มีภาพตัวอย่าง')).toHaveCount(12);
   await page.getByRole('link', { name: /บ้านพักหลัก/ }).click();
   await expect(page.getByRole('heading', { name: 'เลือกวันเข้าพัก' })).toBeVisible();
   await page.goto('/unknown-page'); await expect(page.getByRole('heading', { name: 'ไม่พบหน้าที่คุณต้องการ' })).toBeVisible();
-  await page.getByRole('link', { name: 'กลับไปหน้าห้องพัก' }).click(); await expect(page.locator('.room-item')).toHaveCount(5);
+  await page.getByRole('link', { name: 'กลับไปหน้าห้องพัก' }).click(); await expect(page.locator('.room-item')).toHaveCount(12);
 });
 
 test('logout failure stays signed in and allows retry', async ({ page }) => {
   await registerLogin(page);
   await page.route('**/api/v1/auth/logout', route => route.abort('failed'));
   await page.getByRole('button', { name: 'ออกจากระบบ', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('เชื่อมต่อไม่สำเร็จ'); await expect(page.locator('.room-item')).toHaveCount(5);
+  await expect(page.getByRole('alert')).toContainText('เชื่อมต่อไม่สำเร็จ'); await expect(page.locator('.room-item')).toHaveCount(12);
   await page.unroute('**/api/v1/auth/logout'); await page.getByRole('button', { name: 'ออกจากระบบ', exact: true }).click(); await expect(page).toHaveURL(/\/login$/);
 });
 
@@ -166,6 +169,7 @@ test('lost booking response after commit warns without resubmitting and refreshe
   expect(requests).toBe(1); expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('1');
   await page.getByRole('button', { name: 'ตรวจผลการจอง', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
+  await page.getByRole('button',{name:'กลับไปดูปฏิทิน',exact:true}).click();
   await expect(page.locator('.calendar-booked')).toHaveCount(2);
   await expect(page.getByLabel('วันเข้า', { exact: true })).toHaveValue('');
   expect(requests).toBe(1);
@@ -181,7 +185,7 @@ test('auth network and rate-limit errors preserve fields for retry', async ({ pa
   await page.getByLabel('อีเมล', { exact: true }).fill('retry@example.com'); await page.getByLabel('รหัสผ่าน', { exact: true }).fill(password);
   await page.route('**/api/v1/auth/login', route => route.fulfill({ status: 429, headers: { 'Retry-After': '30' }, json: { error: { code: 'RATE_LIMITED', message: 'Rate limited' } } }));
   await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click(); await expect(page.getByRole('alert')).toContainText('30 วินาที');
-  await page.unroute('**/api/v1/auth/login'); await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click(); await expect(page.locator('.room-item')).toHaveCount(5);
+  await page.unroute('**/api/v1/auth/login'); await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click(); await expect(page.locator('.room-item')).toHaveCount(12);
 });
 
 test('confirmed booking keeps receipt even when calendar refresh fails', async ({ page }) => {
@@ -189,11 +193,13 @@ test('confirmed booking keeps receipt even when calendar refresh fails', async (
   await page.route('**/api/v1/rooms/*/calendar?*', route => route.fulfill({ status: 503, body: 'Unavailable' }));
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
+  await expect(page.getByRole('button',{name:'ตรวจสอบการจอง',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'กลับไปดูปฏิทิน',exact:true}).click();
   await expect(page.getByRole('heading', { name: 'ตรวจวันว่างไม่สำเร็จ' })).toBeVisible();
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('1');
   await page.unroute('**/api/v1/rooms/*/calendar?*'); await page.getByRole('button', { name: 'ลองใหม่' }).click();
   await expect(page.locator('.calendar-booked')).toHaveCount(2);
-  await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
+  expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('1');
 });
 
 test('fully booked visible months explain how to continue', async ({ page }) => {
@@ -202,7 +208,7 @@ test('fully booked visible months explain how to continue', async ({ page }) => 
   await openRoom(page);
   await expect(page.getByText('ไม่มีคืนว่างในช่วงที่แสดง ลองเปลี่ยนเดือนหรือเลือกห้องอื่น')).toBeVisible();
   await expect(page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true })).toBeDisabled();
-  await page.getByRole('link', { name: 'ห้องพักทั้งหมด', exact: true }).click(); await expect(page.locator('.room-item')).toHaveCount(5);
+  await page.getByRole('link', { name: 'ห้องพักทั้งหมด', exact: true }).click(); await expect(page.locator('.room-item')).toHaveCount(12);
 });
 
 test('pending booking disables duplicate action and cannot dismiss the dialog', async ({ page }) => {
@@ -224,7 +230,7 @@ test('slow room loading shows a placeholder then the actual list', async ({ page
   let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
   await page.route('**/api/v1/rooms', async route => { await gate; await route.continue(); });
   try { await page.reload(); await expect(page.getByLabel('กำลังโหลดห้องพัก', { exact: true })).toBeVisible(); await expect(page.locator('.room-item')).toHaveCount(0); } finally { release(); }
-  await expect(page.locator('.room-item')).toHaveCount(5);
+  await expect(page.locator('.room-item')).toHaveCount(12);
 });
 
 test('failed lazy page shows reload recovery and reload opens the room', async ({ page }) => {
@@ -291,9 +297,79 @@ test('reload of an uncommitted request reuses its key when the guest fills the f
   await registerLogin(page); await openRoom(page); await fillBooking(page); let key = '';
   await page.route('**/api/v1/bookings', route => { key = route.request().headers()['idempotency-key']; return route.abort('failed'); });
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click(); await expect(page.getByText(/ยังยืนยันผลการจองไม่ได้/)).toBeVisible();
-  await page.unroute('**/api/v1/bookings'); await page.reload(); await expect(page.getByText(/ยังไม่พบผลการจอง คำขอเดิมอาจกำลังประมวลผล ตรวจผลอีกครั้ง/)).toBeVisible();
+  await page.unroute('**/api/v1/bookings'); await page.reload(); await expect(page.getByText(/ยังไม่พบผลการจอง ตรวจผลอีกครั้ง/)).toBeVisible();
   await fillBooking(page); const post = page.waitForRequest(request => request.method() === 'POST' && request.url().endsWith('/bookings'));
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click(); expect((await post).headers()['idempotency-key']).toBe(key);
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible(); expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('1');
 });
 
+
+test('my bookings persists after reload, refreshes after booking and isolates accounts',async({page})=>{
+  await page.goto('/my-bookings'); await expect(page).toHaveURL(/\/login$/);
+  await registerLogin(page); await page.getByRole('link',{name:'การจองของฉัน',exact:true}).click();
+  await expect(page.getByText('คุณยังไม่มีรายการจอง')).toBeVisible();
+  await page.getByRole('link',{name:'เลือกห้องพักและตรวจวันว่าง'}).click(); await openRoom(page); await fillBooking(page);
+  await page.getByRole('button',{name:'ยืนยันการจอง',exact:true}).click();
+  await page.getByRole('link',{name:'ดูการจองของฉัน'}).click();
+  await expect(page.getByRole('article')).toHaveCount(1); await expect(page.getByText('ยืนยันการจองแล้ว')).toBeVisible();
+  const id=(await pool.query('SELECT id FROM bookings')).rows[0].id;
+  await expect(page.getByText(id,{exact:true})).toBeVisible(); await page.reload(); await expect(page.getByText(id,{exact:true})).toBeVisible();
+  await page.screenshot({path:'test-results/my-bookings-desktop.png',fullPage:true});
+  await page.setViewportSize({width:360,height:800}); expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:'test-results/my-bookings-mobile.png',fullPage:true});
+  await page.getByRole('button',{name:'ออกจากระบบ',exact:true}).click();
+  await registerLogin(page,'another-owner@example.com'); await page.getByRole('link',{name:'การจองของฉัน',exact:true}).click();
+  await expect(page.getByText('คุณยังไม่มีรายการจอง')).toBeVisible(); await expect(page.getByText(id,{exact:true})).toHaveCount(0);
+});
+
+test('my bookings paginates historical cancelled stays and retries network failures',async({page})=>{
+  await registerLogin(page);
+  const owner=(await pool.query('SELECT id FROM users')).rows[0].id;
+  await pool.query(`INSERT INTO bookings(user_id,room_id,check_in,check_out,guest_name,guest_phone,guest_email,status,cancelled_at,created_at)
+    SELECT $1,'7c71298a-ef46-457c-ab5e-9edb238a54e5',DATE '2025-01-01'+n,DATE '2025-01-02'+n,'Historical Guest','+66812345678','history@example.com','cancelled',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+n*INTERVAL '1 microsecond' FROM generate_series(1,21) n`,[owner]);
+  await page.route('**/api/v1/bookings?*',route=>route.abort()); await page.getByRole('link',{name:'การจองของฉัน',exact:true}).click();
+  await expect(page.getByText('โหลดการจองไม่สำเร็จ')).toBeVisible(); await page.unroute('**/api/v1/bookings?*');
+  await page.getByRole('button',{name:'ลองใหม่',exact:true}).click(); await expect(page.getByRole('article')).toHaveCount(20);
+  await page.getByRole('button',{name:'โหลดรายการเพิ่มเติม'}).click(); await expect(page.getByRole('article')).toHaveCount(21);
+  await expect(page.getByText('ยกเลิกแล้ว',{exact:true})).toHaveCount(21); await expect(page.getByText('แสดงรายการครบแล้ว')).toBeVisible();
+  const ids=await page.locator('.booking-reference code').allTextContents(); expect(new Set(ids).size).toBe(21);
+});
+
+test('user cancels a stay, retries a lost response and frees the dates for rebooking',async({page})=>{
+  await registerLogin(page); await openRoom(page); await fillBooking(page);
+  await page.getByRole('button',{name:'ยืนยันการจอง',exact:true}).click(); await page.getByRole('link',{name:'ดูการจองของฉัน'}).click();
+  await page.getByRole('button',{name:'ยกเลิกการจอง',exact:true}).click();
+  await page.screenshot({path:'test-results/cancel-confirmation.png',fullPage:true});
+  await page.getByRole('button',{name:'เก็บการจองไว้'}).click(); expect((await pool.query('SELECT status FROM bookings')).rows[0].status).toBe('confirmed');
+  let calls=0;
+  await page.route('**/api/v1/bookings/*/cancel',async route=>{calls++; const response=await route.fetch(); if(calls===1)await route.abort();else await route.fulfill({response});});
+  await page.getByRole('button',{name:'ยกเลิกการจอง',exact:true}).click(); await page.getByRole('button',{name:'ยืนยันยกเลิกการจอง',exact:true}).click();
+  await expect(page.getByRole('alert')).toContainText('ลองยกเลิกรายการเดิมอีกครั้ง');
+  expect((await pool.query('SELECT status,cancelled_at FROM bookings')).rows[0].status).toBe('cancelled');
+  await page.getByRole('button',{name:'ยืนยันยกเลิกการจอง',exact:true}).click(); await expect(page.getByText('ยกเลิกแล้ว',{exact:true})).toBeVisible(); expect(calls).toBe(2);
+  await page.reload(); await expect(page.getByText('ยกเลิกแล้ว',{exact:true})).toBeVisible(); await expect(page.getByRole('button',{name:'ยกเลิกการจอง',exact:true})).toHaveCount(0);
+  await page.getByRole('link',{name:'จองห้องพักเพิ่ม'}).click(); await openRoom(page); await expect(page.locator('.calendar-booked')).toHaveCount(0);
+  await fillBooking(page); await page.getByRole('button',{name:'ยืนยันการจอง',exact:true}).click(); await expect(page.getByRole('heading',{name:'บันทึกการจองเรียบร้อยแล้ว'})).toBeVisible();
+  expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('2');
+});
+
+test('search and province filters survive reload, clear no matches and open the correct hotel',async({page})=>{
+  await registerLogin(page); await expect(page.locator('.room-item')).toHaveCount(12);
+  await expect(page.getByLabel('จังหวัด').locator('option')).toHaveCount(9);
+  await page.screenshot({path:'test-results/stay-catalog-desktop.png',fullPage:true});
+  await page.getByLabel('จังหวัด',{exact:true}).selectOption('ภูเก็ต'); await expect(page.locator('.room-item')).toHaveCount(1);
+  await expect(page.getByRole('link',{name:/ห้องแสงอันดามัน/})).toContainText('แสงเช้าภูเก็ต');
+  await page.getByLabel('ค้นหาที่พัก').fill('แสงเช้า'); await page.reload(); await expect(page.getByLabel('จังหวัด',{exact:true})).toHaveValue('ภูเก็ต');
+  await expect(page.getByLabel('ค้นหาที่พัก')).toHaveValue('แสงเช้า'); await expect(page.locator('.room-item')).toHaveCount(1);
+  await page.screenshot({path:'test-results/stay-search-desktop.png',fullPage:true});
+  await page.getByRole('link',{name:/ห้องแสงอันดามัน/}).click(); await expect(page.getByRole('heading',{name:'ห้องแสงอันดามัน',exact:true})).toBeVisible();
+  await expect(page.locator('.detail-heading')).toContainText('แสงเช้าภูเก็ต · ภูเก็ต');
+  await page.getByRole('link',{name:'ห้องพักทั้งหมด',exact:true}).click(); await expect(page.getByLabel('จังหวัด',{exact:true})).toHaveValue('ภูเก็ต');
+  await page.getByLabel('ค้นหาที่พัก').fill('ไม่พบที่พักนี้'); await expect(page.getByText('ไม่พบที่พักที่ตรงกับการค้นหา')).toBeVisible();
+  await page.getByRole('button',{name:'ล้างตัวกรอง',exact:true}).first().click(); await expect(page.locator('.room-item')).toHaveCount(12);
+  await page.setViewportSize({width:360,height:800}); await page.getByLabel('จังหวัด',{exact:true}).selectOption('กระบี่');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:'test-results/stay-search-mobile.png',fullPage:true});
+  await page.goto('/rooms?province='+encodeURIComponent('จังหวัดที่ไม่มี')); await expect(page.getByText('ไม่พบที่พักที่ตรงกับการค้นหา')).toBeVisible();
+  await expect(page.getByLabel('จังหวัด',{exact:true})).toHaveValue('จังหวัดที่ไม่มี');
+});

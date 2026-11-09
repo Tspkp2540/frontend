@@ -26,7 +26,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
       } else {
         const session = await api.login(values); auth.setSession(session);
         const from = location.state?.from;
-        navigate(typeof from === 'string' && /^\/rooms(?:\/|$)/.test(from) ? from : '/rooms', { replace: true });
+        navigate(typeof from === 'string' && (/^\/rooms(?:\/|\?|$)/.test(from) || from === '/my-bookings') ? from : '/rooms', { replace: true });
       }
     } catch (error) {
       if (error instanceof ApiError && error.fields.length) {
@@ -38,7 +38,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   return <div className="auth-layout" key={register ? 'register' : 'login'}>
     <aside className="auth-photo"><RoomImage src="/images/main.jpg" alt="ภาพประกอบบ้านพักท่ามกลางธรรมชาติ" /><div className="photo-caption"><span>YOUR TIME, YOUR SPACE</span><p>พื้นที่สำหรับ<br />วันพักของคุณ</p><small>ภาพประกอบที่พักตัวอย่าง</small></div></aside>
     <section className="auth-panel"><div className="auth-form-wrap">
-      <p className="eyebrow">WELCOME TO BAAN PAK</p>
+
       <h1>{register ? 'เริ่มต้นวันพักของคุณ' : 'ยินดีต้อนรับกลับ'}</h1>
       <p className="intro">{register ? 'สมัครสมาชิกเพื่อเลือกห้องและจองวันเข้าพัก' : 'เข้าสู่ระบบเพื่อดูวันว่างและจองที่พัก'}</p>
       {location.state?.registered && !register && <Alert tone="info">สมัครสมาชิกเรียบร้อยแล้ว เข้าสู่ระบบด้วยบัญชีของคุณได้เลย</Alert>}
@@ -50,7 +50,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
         <Button type="submit" busy={form.formState.isSubmitting}>{register ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}<ArrowRight size={18} /></Button>
       </form>
       <p className="auth-switch">{register ? 'มีบัญชีอยู่แล้ว?' : 'ยังไม่มีบัญชี?'} <Link to={register ? '/login' : '/register'}>{register ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</Link></p>
-      <div className="auth-note"><span className="tiny-rule" />เลือกห้อง เลือกวัน แล้วออกไปพักผ่อน</div>
+
     </div></section>
   </div>;
 }

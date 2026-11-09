@@ -2,6 +2,7 @@ const m=(target,id,file,before,after,description,tests)=>({target,id,file,before
 const booking=['tests/booking.test.ts'],auth=['tests/auth.test.ts'],calendar=['tests/calendar.test.ts'];
 const dates=['src/lib/dates.test.ts'],flows=['src/pages/flows.test.tsx'],bookFlows=['src/pages/booking-flows.test.tsx'];
 export const mutations=[
+ m('frontend','FE-CANCEL-01','src/components/CancelBooking.tsx','item.id === booking.id','false','Fail to update the cancelled booking status',['src/pages/my-bookings.test.tsx']),
  m('frontend','FE-DATE-01','src/lib/dates.ts','range.checkIn < data.today','range.checkIn <= data.today','Reject check-in today',dates),
  m('frontend','FE-DATE-02','src/lib/dates.ts','nights(range) < 1','nights(range) < 0','Allow zero-night stay',dates),
  m('frontend','FE-DATE-03','src/lib/dates.ts','nights(range) > data.bookingRules.maxNights','nights(range) >= data.bookingRules.maxNights','Reject exact maximum nights',dates),

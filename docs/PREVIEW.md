@@ -1,17 +1,25 @@
-# หน้าจอตัวอย่าง
+# ภาพหน้าจอ
 
-ภาพจากการรันแอปในเครื่องด้วยข้อมูลทดสอบ ภาพห้องพักใช้ประกอบการสาธิต ดู [ที่มา](../ASSETS.md)
+ภาพจากแอปปัจจุบันด้วยข้อมูลทดสอบ ที่พักเป็นข้อมูลสมมติและใช้ภาพประกอบ [ที่มาภาพ](../ASSETS.md)
 
-## เข้าสู่ระบบ
+## ค้นหาและกรองจังหวัด
 
-![หน้าเข้าสู่ระบบ](images/login-desktop.jpg)
+![ค้นหาที่พัก](images/stay-search-desktop.png)
 
-## ยืนยันการจอง
+## การจองของฉัน
 
-![Popup ยืนยันการจอง](images/booking-confirmation.jpg)
+![ประวัติการจอง](images/my-bookings-desktop.png)
 
-## มือถือ
+## ยืนยันและผลการจอง
 
-<img src="images/room-mobile.png" alt="หน้าปฏิทินและฟอร์มจองบนมือถือ" width="390">
+![ยืนยันก่อนจอง](images/booking-confirmation-current.png)
+![ใบยืนยันการจอง](images/booking-receipt-current.png)
+![ยืนยันยกเลิก](images/cancel-confirmation.png)
 
-[กลับ README](../README.md) · [State matrix](STATES.md)
+## เข้าสู่ระบบและมือถือ
+
+![เข้าสู่ระบบ](images/login-current.png)
+<img src="images/stay-search-mobile.png" alt="ค้นหาบนมือถือ360px" width="360">
+<img src="images/room-mobile.png" alt="ปฏิทินและฟอร์มจองบนมือถือ" width="390">
+
+[README](../README.md) · [States](STATES.md) · [Testing](TESTING.md)

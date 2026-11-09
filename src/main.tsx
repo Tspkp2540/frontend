@@ -10,6 +10,7 @@ import './styles.css';
 import { AuthProvider, ProtectedRoute } from './auth/AuthProvider';
 import { Layout } from './components/Layout';
 import { AuthPage } from './pages/AuthPage';
+import { MyBookingsPage } from './pages/MyBookingsPage';
 import { RoomsPage } from './pages/RoomsPage';
 import { AppErrorBoundary, PageState } from './components/ui';
 const RoomPage = React.lazy(async () => {
@@ -23,7 +24,7 @@ function RoomRoute() { const { roomId } = useParams(); return <React.Suspense fa
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><AppErrorBoundary><QueryClientProvider client={client}><BrowserRouter><AuthProvider><Routes>
   <Route element={<Layout />}>
     <Route path="/login" element={<AuthPage key="login" />} /><Route path="/register" element={<AuthPage key="register" register />} />
-    <Route path="/rooms" element={<ProtectedRoute><RoomsPage /></ProtectedRoute>} />
+    <Route path="/my-bookings" element={<ProtectedRoute><MyBookingsPage/></ProtectedRoute>}/><Route path="/rooms" element={<ProtectedRoute><RoomsPage /></ProtectedRoute>} />
     <Route path="/rooms/:roomId" element={<ProtectedRoute><RoomRoute /></ProtectedRoute>} />
     <Route path="/" element={<Navigate to="/rooms" replace />} />
     <Route path="*" element={<PageState title="ไม่พบหน้าที่คุณต้องการ"><a href="/rooms">กลับไปหน้าห้องพัก</a></PageState>} />
