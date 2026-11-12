@@ -23,7 +23,7 @@ export const guestSchema = z.object({
   guestPhone: z
     .string()
     .trim()
-    .regex(/^\+[1-9][0-9]{1,14}$/, 'ใช้รหัสประเทศ เช่น +66812345678'),
+    .regex(/^0[0-9]{9}$/, 'กรุณากรอกเบอร์โทรศัพท์ 10 หลัก เริ่มต้นด้วย 0'),
 });
 export type LoginValues = z.infer<typeof loginSchema>;
 export type RegisterValues = z.infer<typeof registerSchema>;

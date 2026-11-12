@@ -39,7 +39,7 @@ async function openRoom(page: Page) {
 async function fillBooking(page: Page, from = next(today, 2), to = next(today, 4)) {
   await page.getByLabel('วันเข้า', { exact: true }).fill(from);
   await page.getByLabel('วันออก', { exact: true }).fill(to);
-  await page.getByLabel('เบอร์โทรศัพท์', { exact: true }).fill('+66812345678');
+  await page.getByLabel('เบอร์โทรศัพท์', { exact: true }).fill('0812345678');
   await page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'ยืนยันการจอง' })).toBeVisible();
 }
@@ -73,6 +73,7 @@ test('protected pages, inline login errors, twelve rooms, real photos and logout
   await page.getByLabel('อีเมล', { exact: true }).fill('review@example.com');
   await page.getByLabel('รหัสผ่าน', { exact: true }).fill('wrong-password-123');
   await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('alert')).toContainText('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
@@ -84,6 +85,7 @@ test('booking confirmation commits once, shows receipt and updates calendar with
   await fillBooking(page);
   await page.screenshot({ path: 'test-results/booking-confirmation-current.png', fullPage: true });
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: 'test-results/booking-receipt-current.png', fullPage: true });
@@ -131,8 +133,9 @@ test('late conflict refreshes availability, preserves guest input and asks for n
   });
   expect(result.status()).toBe(201);
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('alert')).toContainText('เพิ่งถูกจองแล้ว');
-  await expect(page.getByLabel('เบอร์โทรศัพท์', { exact: true })).toHaveValue('+66812345678');
+  await expect(page.getByLabel('เบอร์โทรศัพท์', { exact: true })).toHaveValue('0812345678');
   await expect(page.getByLabel('วันเข้า', { exact: true })).toHaveValue('');
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('1');
 });
@@ -168,10 +171,11 @@ test('calendar allows checkout on the next booking start and disables crossing o
     .click();
   await expect(page.getByLabel('วันเข้า', { exact: true })).toHaveValue(next(today, 2));
   await expect(page.getByLabel('วันออก', { exact: true })).toHaveValue(next(today, 5));
-  await page.getByLabel('เบอร์โทรศัพท์', { exact: true }).fill('+66812345678');
+  await page.getByLabel('เบอร์โทรศัพท์', { exact: true }).fill('0812345678');
   await page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'ยืนยันการจอง' })).toBeVisible();
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('2');
 });
@@ -195,7 +199,7 @@ test('failed calendar refresh preserves guest input and blocks booking until ret
 }) => {
   await registerLogin(page);
   await openRoom(page);
-  await page.getByLabel('เบอร์โทรศัพท์', { exact: true }).fill('+66812345678');
+  await page.getByLabel('เบอร์โทรศัพท์', { exact: true }).fill('0812345678');
   await page.route('**/api/v1/rooms/*/calendar?*', route =>
     route.fulfill({
       status: 503,
@@ -204,19 +208,21 @@ test('failed calendar refresh preserves guest input and blocks booking until ret
     }),
   );
   await page.getByRole('button', { name: 'เดือนถัดไป', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('heading', { name: 'ตรวจวันว่างไม่สำเร็จ' })).toBeVisible();
-  await expect(page.getByLabel('เบอร์โทรศัพท์', { exact: true })).toHaveValue('+66812345678');
+  await expect(page.getByLabel('เบอร์โทรศัพท์', { exact: true })).toHaveValue('0812345678');
   await expect(page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true })).toBeDisabled();
   await page.unroute('**/api/v1/rooms/*/calendar?*');
   await page.getByRole('button', { name: 'ลองใหม่', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'ตรวจวันว่างไม่สำเร็จ' })).toHaveCount(0);
-  await expect(page.getByLabel('เบอร์โทรศัพท์', { exact: true })).toHaveValue('+66812345678');
+  await expect(page.getByLabel('เบอร์โทรศัพท์', { exact: true })).toHaveValue('0812345678');
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('0');
 });
 
 test('session lookup failure shows retry and recovers', async ({ page }) => {
   await page.route('**/api/v1/auth/me', route => route.abort('failed'));
   await page.goto('/rooms');
+  await acknowledgeError(page);
   await expect(page.getByRole('heading', { name: 'ตรวจสอบการเข้าสู่ระบบไม่สำเร็จ' })).toBeVisible();
   await page.unroute('**/api/v1/auth/me');
   await page.getByRole('button', { name: 'ลองใหม่' }).click();
@@ -237,6 +243,7 @@ for (const mode of ['network', 'server', 'malformed'] as const) {
           }),
     );
     await page.reload();
+    await acknowledgeError(page);
     await expect(page.getByRole('heading', { name: 'โหลดห้องพักไม่สำเร็จ' })).toBeVisible();
     await page.unroute('**/api/v1/rooms');
     await page.getByRole('button', { name: 'ลองใหม่' }).click();
@@ -261,6 +268,7 @@ test('initial calendar failure recovers and missing room has a way back', async 
     route.fulfill({ status: 503, body: 'Unavailable' }),
   );
   await page.getByRole('link', { name: /บ้านพักหลัก/ }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('heading', { name: 'ตรวจวันว่างไม่สำเร็จ' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true })).toHaveCount(0);
   await page.screenshot({ path: 'test-results/calendar-error.png', fullPage: true });
@@ -289,6 +297,7 @@ test('logout failure stays signed in and allows retry', async ({ page }) => {
   await registerLogin(page);
   await page.route('**/api/v1/auth/logout', route => route.abort('failed'));
   await page.getByRole('button', { name: 'ออกจากระบบ', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('alert')).toContainText('เชื่อมต่อไม่สำเร็จ');
   await expect(page.locator('.room-item')).toHaveCount(12);
   await page.unroute('**/api/v1/auth/logout');
@@ -309,11 +318,13 @@ test('lost booking response after commit warns without resubmitting and refreshe
     await route.abort('failed');
   });
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByText(/ยังยืนยันผลการจองไม่ได้/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true })).toBeDisabled();
   expect(requests).toBe(1);
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('1');
   await page.getByRole('button', { name: 'ตรวจผลการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   await page.getByRole('button', { name: 'กลับไปดูปฏิทิน', exact: true }).click();
   await expect(page.locator('.calendar-booked')).toHaveCount(2);
@@ -328,6 +339,7 @@ test('auth network and rate-limit errors preserve fields for retry', async ({ pa
   await page.getByLabel('รหัสผ่าน', { exact: true }).fill(password);
   await page.route('**/api/v1/auth/register', route => route.abort('failed'));
   await page.getByRole('button', { name: 'สมัครสมาชิก', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('alert')).toContainText('เชื่อมต่อไม่สำเร็จ');
   await expect(page.getByLabel('อีเมล', { exact: true })).toHaveValue('retry@example.com');
   await page.unroute('**/api/v1/auth/register');
@@ -343,6 +355,7 @@ test('auth network and rate-limit errors preserve fields for retry', async ({ pa
     }),
   );
   await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('alert')).toContainText('30 วินาที');
   await page.unroute('**/api/v1/auth/login');
   await page.getByRole('button', { name: 'เข้าสู่ระบบ', exact: true }).click();
@@ -357,6 +370,8 @@ test('confirmed booking keeps receipt even when calendar refresh fails', async (
     route.fulfill({ status: 503, body: 'Unavailable' }),
   );
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeError(page);
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'กลับไปดูปฏิทิน', exact: true }).click();
@@ -410,6 +425,7 @@ test('pending booking disables duplicate action and cannot dismiss the dialog', 
   } finally {
     release();
   }
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   expect(requests).toBe(1);
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('1');
@@ -461,8 +477,10 @@ test('safe replay returns the same booking and the next booking uses a new key',
     } else await route.continue();
   });
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByText(/ยังยืนยันผลการจองไม่ได้/)).toBeVisible();
   await page.getByRole('button', { name: 'ส่งคำขอเดิมอีกครั้ง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
@@ -470,6 +488,7 @@ test('safe replay returns the same booking and the next booking uses a new key',
   await page.getByRole('button', { name: 'กลับไปดูปฏิทิน' }).click();
   await fillBooking(page, next(today, 4), next(today, 6));
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   expect(keys[2]).not.toBe(keys[0]);
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('2');
@@ -487,6 +506,7 @@ test('a request that never arrived can be checked then retried with the same key
     return route.abort('failed');
   });
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeError(page);
   await page.getByRole('button', { name: 'ตรวจผลการจอง', exact: true }).click();
   await expect(
     page.getByText(/ยังไม่พบผลการจอง คำขอเดิมอาจกำลังประมวลผล ตรวจอีกครั้ง/),
@@ -498,6 +518,7 @@ test('a request that never arrived can be checked then retried with the same key
   );
   await page.getByRole('button', { name: 'ส่งคำขอเดิมอีกครั้ง', exact: true }).click();
   expect((await post).headers()['idempotency-key']).toBe(originalKey);
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('1');
 });
@@ -511,6 +532,7 @@ test('reload recovers a committed request without persisting guest details', asy
     await route.abort('failed');
   });
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByText(/ยังยืนยันผลการจองไม่ได้/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'ตรวจผลการจอง', exact: true })).toBeFocused();
   const entries = await page.evaluate(() =>
@@ -538,11 +560,13 @@ test('reloaded recovery can retry a failed lookup', async ({ page }) => {
     await route.abort('failed');
   });
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByText(/ยังยืนยันผลการจองไม่ได้/)).toBeVisible();
   await page.route('**/api/v1/bookings/requests/*', route =>
     route.fulfill({ status: 503, body: 'Unavailable' }),
   );
   await page.reload();
+  await acknowledgeError(page);
   await expect(page.getByText(/ตรวจผลการจองไม่สำเร็จ:/)).toBeVisible();
   await page.unroute('**/api/v1/bookings/requests/*');
   await page.getByRole('button', { name: 'ตรวจผลการจองอีกครั้ง', exact: true }).click();
@@ -562,6 +586,7 @@ test('reload of an uncommitted request reuses its key when the guest fills the f
     return route.abort('failed');
   });
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByText(/ยังยืนยันผลการจองไม่ได้/)).toBeVisible();
   await page.unroute('**/api/v1/bookings');
   await page.reload();
@@ -572,6 +597,7 @@ test('reload of an uncommitted request reuses its key when the guest fills the f
   );
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
   expect((await post).headers()['idempotency-key']).toBe(key);
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('1');
 });
@@ -588,6 +614,7 @@ test('my bookings persists after reload, refreshes after booking and isolates ac
   await openRoom(page);
   await fillBooking(page);
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await page.getByRole('link', { name: 'ดูการจองของฉัน' }).click();
   await expect(page.getByRole('article')).toHaveCount(1);
   await expect(page.getByText('ยืนยันการจองแล้ว')).toBeVisible();
@@ -613,6 +640,7 @@ test('my bookings paginates historical cancelled stays and retries network failu
   await seedHistory();
   await page.route('**/api/v1/bookings?*', route => route.abort());
   await page.getByRole('link', { name: 'การจองของฉัน', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByText('โหลดการจองไม่สำเร็จ')).toBeVisible();
   await page.unroute('**/api/v1/bookings?*');
   await page.getByRole('button', { name: 'ลองใหม่', exact: true }).click();
@@ -632,6 +660,7 @@ test('user cancels a stay, retries a lost response and frees the dates for reboo
   await openRoom(page);
   await fillBooking(page);
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await page.getByRole('link', { name: 'ดูการจองของฉัน' }).click();
   await page.getByRole('button', { name: 'ยกเลิกการจอง', exact: true }).click();
   await page.screenshot({ path: 'test-results/cancel-confirmation.png', fullPage: true });
@@ -646,11 +675,13 @@ test('user cancels a stay, retries a lost response and frees the dates for reboo
   });
   await page.getByRole('button', { name: 'ยกเลิกการจอง', exact: true }).click();
   await page.getByRole('button', { name: 'ยืนยันยกเลิกการจอง', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('alert')).toContainText('ลองยกเลิกรายการเดิมอีกครั้ง');
   expect((await pool.query('SELECT status,cancelled_at FROM bookings')).rows[0].status).toBe(
     'cancelled',
   );
   await page.getByRole('button', { name: 'ยืนยันยกเลิกการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'ยกเลิกสำเร็จ');
   await expect(page.getByText('ยกเลิกแล้ว', { exact: true })).toBeVisible();
   expect(calls).toBe(2);
   await page.reload();
@@ -661,6 +692,7 @@ test('user cancels a stay, retries a lost response and frees the dates for reboo
   await expect(page.locator('.calendar-booked')).toHaveCount(0);
   await fillBooking(page);
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('2');
 });
@@ -726,6 +758,7 @@ test('booking validation errors preserve guest input and allow a corrected retry
     await route.continue();
   });
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByLabel('เบอร์โทรศัพท์', { exact: true })).toHaveAttribute(
     'aria-invalid',
@@ -735,9 +768,10 @@ test('booking validation errors preserve guest input and allow a corrected retry
   await expect(page.getByLabel('ชื่อ-สกุลผู้เข้าพัก', { exact: true })).toHaveValue('ผู้ตรวจระบบ');
   await expect(page.getByLabel('วันเข้า', { exact: true })).toHaveValue(next(today, 2));
   expect((await pool.query('SELECT count(*) FROM bookings')).rows[0].count).toBe('0');
-  await page.getByLabel('เบอร์โทรศัพท์', { exact: true }).fill('+66898765432');
+  await page.getByLabel('เบอร์โทรศัพท์', { exact: true }).fill('0898765432');
   await page.getByRole('button', { name: 'ตรวจสอบการจอง', exact: true }).click();
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await expect(page.getByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' })).toBeVisible();
   const rows = (await pool.query('SELECT guest_phone,status FROM bookings')).rows;
   expect(rows).toEqual([{ guest_phone: '+66898765432', status: 'confirmed' }]);
@@ -751,6 +785,7 @@ test('a cancellation rejected at the cutoff leaves the booking confirmed and rel
   await openRoom(page);
   await fillBooking(page);
   await page.getByRole('button', { name: 'ยืนยันการจอง', exact: true }).click();
+  await acknowledgeSuccess(page, 'จองสำเร็จ');
   await page.getByRole('link', { name: 'ดูการจองของฉัน', exact: true }).click();
   await page.getByRole('button', { name: 'ยกเลิกการจอง', exact: true }).click();
   // Simulate stale browser data: the server's booking has already reached check-in day.
@@ -760,6 +795,7 @@ test('a cancellation rejected at the cutoff leaves the booking confirmed and rel
   );
   await page.getByRole('button', { name: 'ยืนยันยกเลิกการจอง', exact: true }).click();
   expect((await response).status()).toBe(409);
+  await acknowledgeError(page);
   await expect(page.getByRole('dialog').getByRole('alert')).toHaveText(
     'ยกเลิกได้ก่อนวันเข้าพักเท่านั้น',
   );
@@ -791,6 +827,7 @@ test('failed history pagination retains loaded rows and retries the same cursor 
   await expect(page.getByRole('article')).toHaveCount(20);
   const firstPage = await page.locator('.booking-reference code').allTextContents();
   await page.getByRole('button', { name: 'โหลดรายการเพิ่มเติม', exact: true }).click();
+  await acknowledgeError(page);
   await expect(page.getByRole('alert')).toContainText('เชื่อมต่อไม่สำเร็จ');
   await expect(page.getByRole('article')).toHaveCount(20);
   expect(await page.locator('.booking-reference code').allTextContents()).toEqual(firstPage);
@@ -839,3 +876,23 @@ test('rapid month navigation cancels stale requests while the latest calendar su
     release();
   }
 });
+
+async function acknowledgeError(page: import('@playwright/test').Page) {
+  const dialog = page.getByRole('dialog').filter({
+    hasNot: page.getByRole('heading', { name: /^(จองสำเร็จ|ยกเลิกสำเร็จ)$/ }),
+  });
+  const button = dialog.getByRole('button', { name: 'ตกลง', exact: true });
+  await expect(button).toBeVisible();
+  await expect(dialog.getByRole('heading')).not.toBeEmpty();
+  await expect(dialog.locator('.modal-description')).not.toBeEmpty();
+  await button.click();
+  await expect(dialog).toHaveCount(0);
+}
+
+async function acknowledgeSuccess(page: import('@playwright/test').Page, title: string) {
+  const dialog = page.getByRole('dialog', { name: title, exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.modal-description')).not.toBeEmpty();
+  await dialog.getByRole('button', { name: 'ตกลง', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}

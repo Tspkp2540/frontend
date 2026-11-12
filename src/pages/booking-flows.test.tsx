@@ -29,7 +29,7 @@ async function prepare() {
   fireEvent.change(screen.getByLabelText('วันออก', { exact: true }), {
     target: { value: '2026-11-12' },
   });
-  fireEvent.change(screen.getByLabelText('เบอร์โทรศัพท์'), { target: { value: '+66812345678' } });
+  fireEvent.change(screen.getByLabelText('เบอร์โทรศัพท์'), { target: { value: '0812345678' } });
   await click('ตรวจสอบการจอง');
   await screen.findByRole('dialog', { name: 'ยืนยันการจอง' });
 }
@@ -41,6 +41,7 @@ describe('booking interactions and recovery', () => {
     expect(api.book).not.toHaveBeenCalled();
     await click('ตรวจสอบการจอง');
     await click('ยืนยันการจอง');
+    await acknowledgeSuccess();
     await screen.findByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' });
     expect(screen.queryByRole('button', { name: 'ตรวจสอบการจอง' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'ดูวันว่าง' })).not.toBeInTheDocument();
@@ -65,6 +66,7 @@ describe('booking interactions and recovery', () => {
     expect(screen.getByRole('dialog')).toBeVisible();
     expect(api.book).toHaveBeenCalledTimes(1);
     await act(async () => pending.resolve({ booking }));
+    await acknowledgeSuccess();
     await screen.findByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' });
   });
   it('preserves guest details and refreshes after a late conflict', async () => {
@@ -74,7 +76,7 @@ describe('booking interactions and recovery', () => {
     await click('ยืนยันการจอง');
     await screen.findByText(/ช่วงวันที่นี้เพิ่งถูกจองแล้ว/);
     expect(screen.getByLabelText('วันเข้า', { exact: true })).toHaveValue('');
-    expect(screen.getByLabelText('เบอร์โทรศัพท์')).toHaveValue('+66812345678');
+    expect(screen.getByLabelText('เบอร์โทรศัพท์')).toHaveValue('0812345678');
     expect(readBookingRequest(session.user.id, room.id)).toBeNull();
     expect(api.calendar).toHaveBeenCalledTimes(2);
   });
@@ -89,7 +91,7 @@ describe('booking interactions and recovery', () => {
     await prepare();
     await click('ยืนยันการจอง');
     await screen.findByText('ตรวจเบอร์อีกครั้ง');
-    expect(screen.getByLabelText('เบอร์โทรศัพท์')).toHaveValue('+66812345678');
+    expect(screen.getByLabelText('เบอร์โทรศัพท์')).toHaveValue('0812345678');
   });
   it('revalidates the latest calendar before sending a confirmed form', async () => {
     const { client } = await open();
@@ -114,8 +116,9 @@ describe('booking interactions and recovery', () => {
     const first = vi.mocked(api.book).mock.calls[0];
     await click('ตรวจผลการจอง');
     await screen.findByText(/ยังไม่พบผลการจอง คำขอเดิมอาจกำลังประมวลผล/);
-    fireEvent.change(screen.getByLabelText('เบอร์โทรศัพท์'), { target: { value: '+66899999999' } });
+    fireEvent.change(screen.getByLabelText('เบอร์โทรศัพท์'), { target: { value: '0899999999' } });
     await click('ส่งคำขอเดิมอีกครั้ง');
+    await acknowledgeSuccess();
     await screen.findByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' });
     expect(vi.mocked(api.book).mock.calls[1]).toEqual(first);
   });
@@ -131,6 +134,7 @@ describe('booking interactions and recovery', () => {
     await click('ตรวจผลการจอง');
     await screen.findByText('เชื่อมต่อไม่สำเร็จ');
     await click('ตรวจผลการจอง');
+    await acknowledgeSuccess();
     await screen.findByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' });
     expect(api.book).toHaveBeenCalledTimes(1);
   });
@@ -146,14 +150,14 @@ describe('booking interactions and recovery', () => {
   });
   it('keeps guest input when a month refresh fails and recovers on retry', async () => {
     await open();
-    fireEvent.change(screen.getByLabelText('เบอร์โทรศัพท์'), { target: { value: '+66812345678' } });
+    fireEvent.change(screen.getByLabelText('เบอร์โทรศัพท์'), { target: { value: '0812345678' } });
     vi.mocked(api.calendar).mockRejectedValueOnce(offline());
     await click('เดือนถัดไป');
     await screen.findByRole('heading', { name: 'ตรวจวันว่างไม่สำเร็จ' });
-    expect(screen.getByLabelText('เบอร์โทรศัพท์')).toHaveValue('+66812345678');
+    expect(screen.getByLabelText('เบอร์โทรศัพท์')).toHaveValue('0812345678');
     await click('ลองใหม่');
     await screen.findByText('เลือกวันเข้าพัก แล้วเลือกวันออก');
-    expect(screen.getByLabelText('เบอร์โทรศัพท์')).toHaveValue('+66812345678');
+    expect(screen.getByLabelText('เบอร์โทรศัพท์')).toHaveValue('0812345678');
   });
   it('changes the visible month when dates are entered outside the current window', async () => {
     await open();
@@ -179,6 +183,7 @@ describe('booking interactions and recovery', () => {
         name: status === 'cancelled' ? 'รายการจองนี้ถูกยกเลิกแล้ว' : 'บันทึกการจองเรียบร้อยแล้ว',
       });
       expect(api.book).not.toHaveBeenCalled();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(readBookingRequest(session.user.id, room.id)).toBeNull();
     },
   );
@@ -203,3 +208,11 @@ describe('booking interactions and recovery', () => {
     await screen.findByRole('heading', { name: 'บันทึกการจองเรียบร้อยแล้ว' });
   });
 });
+
+async function acknowledgeSuccess() {
+  expect(await screen.findByRole('dialog', { name: 'จองสำเร็จ' })).toHaveAccessibleDescription(
+    'บันทึกการจองแล้ว ดูรายละเอียดได้ในใบยืนยันหรือหน้าการจองของฉัน',
+  );
+  await click('ตกลง');
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+}

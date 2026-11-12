@@ -156,6 +156,7 @@ export function Modal({
   children,
   actions,
   busy = false,
+  fallbackFocus,
 }: {
   open: boolean;
   onClose: () => void;
@@ -164,6 +165,7 @@ export function Modal({
   children?: ReactNode;
   actions: ReactNode;
   busy?: boolean;
+  fallbackFocus?: () => HTMLElement | null;
 }) {
   const opener = useRef<HTMLElement | null>(null);
   return (
@@ -183,13 +185,15 @@ export function Modal({
           }}
           onCloseAutoFocus={event => {
             event.preventDefault();
-            if (opener.current?.isConnected) {
+            if (opener.current?.isConnected && opener.current !== document.body) {
               const target = opener.current.matches(':disabled')
                 ? opener.current
                     .closest('form')
                     ?.querySelector<HTMLElement>('button:not(:disabled)')
                 : opener.current;
-              target?.focus();
+              (target ?? fallbackFocus?.())?.focus();
+            } else {
+              fallbackFocus?.()?.focus();
             }
           }}
           onEscapeKeyDown={event => {

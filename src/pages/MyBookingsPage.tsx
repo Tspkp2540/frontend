@@ -41,7 +41,7 @@ export function MyBookingsPage() {
         <>
           <div className="booking-history">
             {bookings.map(booking => (
-              <article className="history-item" key={booking.id}>
+              <article className="history-item" key={booking.id} tabIndex={-1}>
                 <div className="history-heading">
                   <h2>{booking.roomName}</h2>
                   <span role="status" className={`booking-status status-${booking.status}`}>
@@ -56,7 +56,7 @@ export function MyBookingsPage() {
                   </div>
                   <div>
                     <dt>โทรศัพท์</dt>
-                    <dd>{booking.guestPhone}</dd>
+                    <dd>{booking.guestPhone.replace(/^\+66(?=[0-9]{9}$)/, '0')}</dd>
                   </div>
                 </dl>
                 <p className="booking-reference">

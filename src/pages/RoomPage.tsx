@@ -11,6 +11,7 @@ import { Alert, Button, PageState, RoomImage, Skeleton } from '../components/ui'
 import { BookingCalendar } from '../components/BookingCalendar';
 import { BookingForm } from '../components/BookingForm';
 import { BookingSummary } from '../components/BookingSummary';
+import { SuccessDialog } from '../components/SuccessDialog';
 import { BookingRecovery } from '../components/BookingRecovery';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -27,6 +28,8 @@ export function RoomPage() {
   const [month, setMonth] = useState(() => startOfMonth(fromKey(bangkokToday())));
   const [range, setRange] = useState<DateRange>({ checkIn: '', checkOut: '' });
   const [receipt, setReceipt] = useState<Booking | null>(null);
+  const [success, setSuccess] = useState(false);
+  const receiptElement = useRef<HTMLElement | null>(null);
   const window = visibleWindow(month);
   const calendar = useQuery({
     queryKey: ['calendar', roomId, window.from, window.to],
@@ -98,7 +101,8 @@ export function RoomPage() {
           aria-live="polite"
           tabIndex={-1}
           ref={element => {
-            element?.focus();
+            receiptElement.current = element;
+            if (!success) element?.focus();
           }}
         >
           <h2>
@@ -190,6 +194,7 @@ export function RoomPage() {
               onChange={choose}
               onBooked={booking => {
                 setReceipt(booking);
+                setSuccess(booking.status === 'confirmed');
                 setRange({ checkIn: '', checkOut: '' });
               }}
             />
@@ -201,6 +206,13 @@ export function RoomPage() {
           ตรวจวันว่างก่อนยืนยันการจอง หรือ <Link to="/rooms">กลับไปเลือกห้องพัก</Link>
         </Alert>
       )}
+      <SuccessDialog
+        open={success}
+        onClose={() => setSuccess(false)}
+        title="จองสำเร็จ"
+        description="บันทึกการจองแล้ว ดูรายละเอียดได้ในใบยืนยันหรือหน้าการจองของฉัน"
+        fallbackFocus={() => receiptElement.current}
+      />
     </div>
   );
 }

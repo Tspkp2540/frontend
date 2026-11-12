@@ -14,15 +14,21 @@
 
 ## ผลล่าสุดในเครื่อง
 
-10 พฤศจิกายน 2026: browser 35/35 flows ผ่านใน1.3นาที ไม่มี failed/skipped/flaky; TypeScript, focused-test guards และactionlintผ่าน
+13 พฤศจิกายน 2026: browser 35/35 flows ผ่านใน 1.4 นาที ไม่มี failed/skipped/flaky; ตรวจเบอร์โทร 10 หลัก, error/success popup และการคืนโฟกัสหลังปิด popup
 
-หลังจัดformat: unit94 testsผ่าน, statements97.76%, branches95.51%, functions98.70%, lines98.65% พร้อมTypeScript/build ผ่าน Line coverageเปลี่ยนจากการแยกโค้ดเป็นหลายบรรทัดและยังผ่านgateเดิม ไม่ลดเกณฑ์เพื่อให้ผ่าน
+Unit/component 109 tests ผ่าน: statements 97.72%, branches 95.51%, functions 98.81%, lines 98.73% ผ่าน coverage gates เดิม พร้อม TypeScript และ production build
+
+Mutation catalogue ตรวจซ้ำหลังปรับเบอร์โทรและ popup: killed 14/14; survived/invalid/timeout เป็น 0
 
 Focused-test guardใช้outputDirแยกใน.ci-work จึงไม่ลบtraceของbrowser suiteที่รันพร้อมกัน ตรวจisolationและbrowser35flowsผ่านแล้ว
 
 รูปแบบโค้ด: `npm run format` จัดรูปแบบ และ `npm run format:check` ตรวจแบบเดียวกับCI ใช้ .prettierrc.json และ LFตาม.gitattributes ทั้งWindows/Linux
 
 Coverage gates: statements/lines/functions ≥90%, branches ≥85%; dates/AuthProvider/BookingRecovery branches100% ไม่รวม main.tsx ซึ่งตรวจ entry/lazy wiring ผ่าน browser
+
+เพิ่มการตรวจ popup จอง/ยกเลิกสำเร็จ ปิดแล้วดูใบยืนยันและประวัติต่อได้ ไม่เปิดซ้ำเมื่อกู้รายการเดิมหลัง reload; กรณีจองสำเร็จพร้อม calendar error ตรวจ popup แต่ละสถานะแยกกัน
+
+เพิ่มเคสเบอร์ไทยถูก/ผิดรูปแบบ, แปลงเบอร์ก่อนส่ง API, popup title/description/ตกลง, คิวและการรวม error ซ้ำ, ไม่เปิด popup สำหรับ signed-out/pending/cancelled request และไม่แสดง diagnostics จาก 5xx
 
 ขอบเขตครอบคลุม auth, ค้นหา/จังหวัด, วันเข้า–ออก, conflict, ประวัติ/ยกเลิก, private cache, loading/empty/error/retry, timeout, malformed response และกู้ผลหลัง reload
 

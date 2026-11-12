@@ -5,6 +5,7 @@ import { bangkokToday } from '../lib/dates';
 import type { Booking, BookingPage } from '../lib/types';
 import { Alert, Button, Modal } from './ui';
 import { BookingSummary } from './BookingSummary';
+import { SuccessDialog } from './SuccessDialog';
 
 export function CancelBooking({ booking }: { booking: Booking & { roomName: string } }) {
   const client = useQueryClient();
@@ -12,6 +13,8 @@ export function CancelBooking({ booking }: { booking: Booking & { roomName: stri
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const sending = useRef(false);
+  const [success, setSuccess] = useState(false);
+  const historyItem = useRef<HTMLElement | null>(null);
   async function cancel() {
     if (sending.current) return;
     sending.current = true;
@@ -19,6 +22,7 @@ export function CancelBooking({ booking }: { booking: Booking & { roomName: stri
     setError('');
     try {
       const result = await api.cancelBooking(booking.id);
+      setSuccess(true);
       client.setQueriesData<InfiniteData<BookingPage>>({ queryKey: ['my-bookings'] }, old =>
         old
           ? {
@@ -46,6 +50,16 @@ export function CancelBooking({ booking }: { booking: Booking & { roomName: stri
       setBusy(false);
     }
   }
+  if (success)
+    return (
+      <SuccessDialog
+        open
+        onClose={() => setSuccess(false)}
+        title="ยกเลิกสำเร็จ"
+        description="ยกเลิกการจองแล้ว วันพักกลับมาเปิดให้จอง และรายการยังอยู่ในประวัติ"
+        fallbackFocus={() => historyItem.current}
+      />
+    );
   if (booking.status === 'cancelled') return null;
   if (booking.checkIn <= bangkokToday())
     return <p className="cancellation-note">พ้นกำหนดยกเลิกแล้ว</p>;
@@ -53,7 +67,8 @@ export function CancelBooking({ booking }: { booking: Booking & { roomName: stri
     <div className="cancellation-action">
       <Button
         variant="text"
-        onClick={() => {
+        onClick={event => {
+          historyItem.current = event.currentTarget.closest('article');
           setError('');
           setOpen(true);
         }}

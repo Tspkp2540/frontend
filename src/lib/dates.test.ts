@@ -80,7 +80,7 @@ describe('booking date rules', () => {
   });
 });
 describe('client validation', () => {
-  it('rejects NUL names and invalid international phones', () => {
+  it('rejects NUL names and international phone input', () => {
     expect(
       guestSchema.safeParse({
         guestName: 'A\u0000B',
@@ -91,7 +91,7 @@ describe('client validation', () => {
     expect(
       guestSchema.safeParse({
         guestName: 'Name',
-        guestPhone: '0812345678',
+        guestPhone: '+66812345678',
         guestEmail: 'a@example.com',
       }).success,
     ).toBe(false);

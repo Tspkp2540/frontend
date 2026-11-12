@@ -9,6 +9,7 @@ import 'react-day-picker/style.css';
 import './styles.css';
 import { AuthProvider, ProtectedRoute } from './auth/AuthProvider';
 import { Layout } from './components/Layout';
+import { ApiErrorDialog } from './components/ApiErrorDialog';
 import { AuthPage } from './pages/AuthPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 import { RoomsPage } from './pages/RoomsPage';
@@ -43,6 +44,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <AppErrorBoundary>
       <QueryClientProvider client={client}>
         <BrowserRouter>
+          <ApiErrorDialog />
           <AuthProvider>
             <Routes>
               <Route element={<Layout />}>

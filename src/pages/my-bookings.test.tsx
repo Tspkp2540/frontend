@@ -41,7 +41,7 @@ it('retries a failed initial request and renders accurate confirmed and cancelle
   expect(await screen.findByText('ยืนยันการจองแล้ว')).toBeVisible();
   expect(screen.getByText('ยกเลิกแล้ว')).toBeVisible();
   expect(screen.getAllByText(item.guestEmail)).toHaveLength(2);
-  expect(screen.getAllByText(item.guestPhone)).toHaveLength(2);
+  expect(screen.getAllByText('0812345678')).toHaveLength(2);
   expect(screen.getByText('แสดงรายการครบแล้ว')).toBeVisible();
 });
 it('retains loaded records when load more fails, then retries the same cursor', async () => {
@@ -107,6 +107,10 @@ it('confirms cancellation, updates the row and clears calendar/recovery caches',
   await userEvent.click(await screen.findByRole('button', { name: 'ยกเลิกการจอง' }));
   expect(screen.getByRole('dialog', { name: 'ยกเลิกการจองนี้?' })).toHaveTextContent(item.roomName);
   await userEvent.click(screen.getByRole('button', { name: 'ยืนยันยกเลิกการจอง' }));
+  expect(await screen.findByRole('dialog', { name: 'ยกเลิกสำเร็จ' })).toHaveAccessibleDescription(
+    'ยกเลิกการจองแล้ว วันพักกลับมาเปิดให้จอง และรายการยังอยู่ในประวัติ',
+  );
+  await userEvent.click(screen.getByRole('button', { name: 'ตกลง' }));
   expect(await screen.findByText('ยกเลิกแล้ว')).toBeVisible();
   expect(api.cancelBooking).toHaveBeenCalledWith(item.id);
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -142,6 +146,10 @@ it('keeps cancellation open on an unknown result, blocks duplicates and retries 
   pending.reject(offline());
   expect(await screen.findByRole('alert')).toHaveTextContent('ลองยกเลิกรายการเดิมอีกครั้ง');
   await userEvent.click(screen.getByRole('button', { name: 'ยืนยันยกเลิกการจอง' }));
+  expect(await screen.findByRole('dialog', { name: 'ยกเลิกสำเร็จ' })).toHaveAccessibleDescription(
+    'ยกเลิกการจองแล้ว วันพักกลับมาเปิดให้จอง และรายการยังอยู่ในประวัติ',
+  );
+  await userEvent.click(screen.getByRole('button', { name: 'ตกลง' }));
   expect(await screen.findByText('ยกเลิกแล้ว')).toBeVisible();
 });
 

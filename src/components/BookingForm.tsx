@@ -69,7 +69,12 @@ export function BookingForm({
       return;
     }
     setMessage('');
-    setPending({ ...values, ...range, roomId: room.id });
+    setPending({
+      ...values,
+      guestPhone: `+66${values.guestPhone.slice(1)}`,
+      ...range,
+      roomId: room.id,
+    });
   }
   async function finish(booking: Booking) {
     clearBookingRequest(userId, room.id);
@@ -78,9 +83,9 @@ export function BookingForm({
     setPending(null);
     setUncertain(false);
     setMessage('');
+    onBooked(booking);
     await client.invalidateQueries({ queryKey: ['my-bookings'] });
     await client.invalidateQueries({ queryKey: ['calendar', room.id] });
-    onBooked(booking);
   }
   async function checkResult() {
     if (!requestKey.current || sending.current) return;
@@ -183,8 +188,10 @@ export function BookingForm({
           label="เบอร์โทรศัพท์"
           type="tel"
           autoComplete="tel"
-          placeholder="+66812345678"
-          hint="ใส่รหัสประเทศ เช่น +66"
+          placeholder="0812345678"
+          inputMode="numeric"
+          maxLength={10}
+          hint="เบอร์โทรศัพท์ 10 หลัก"
           {...form.register('guestPhone')}
           error={form.formState.errors.guestPhone?.message}
         />
@@ -210,6 +217,7 @@ export function BookingForm({
               busy={checking}
               disabled={mutation.isPending}
               onClick={() => void checkResult()}
+              data-error-focus
             >
               ตรวจผลการจอง
             </Button>

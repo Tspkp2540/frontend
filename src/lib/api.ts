@@ -74,14 +74,20 @@ export async function request<T>(
     return body.data as T;
   } catch (error) {
     if (options.signal?.aborted) throw error;
-    if (timeout.signal.aborted)
-      throw new ApiError(0, 'TIMEOUT', 'รอนานเกินไป กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่');
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(
-      0,
-      'NETWORK_ERROR',
-      'เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่',
-    );
+    const failure = timeout.signal.aborted
+      ? new ApiError(0, 'TIMEOUT', 'รอนานเกินไป กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่')
+      : error instanceof ApiError
+        ? error
+        : new ApiError(
+            0,
+            'NETWORK_ERROR',
+            'เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่',
+          );
+    // Signed-out session checks and pending booking lookups are normal control flow.
+    // UNAUTHORIZED already has a dedicated session-expiry dialog.
+    if (failure.code !== 'UNAUTHORIZED' && failure.code !== 'BOOKING_REQUEST_NOT_FOUND')
+      window.dispatchEvent(new CustomEvent('api-error', { detail: failure }));
+    throw failure;
   } finally {
     window.clearTimeout(timer);
   }
